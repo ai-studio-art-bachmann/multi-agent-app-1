@@ -2,6 +2,7 @@ import React, { useRef, useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/use-toast';
 import { getTranslations } from '@/utils/translations';
+import { Download } from 'lucide-react';
 
 interface CameraProps {
   webhookUrl: string;
@@ -79,6 +80,41 @@ export const Camera: React.FC<CameraProps> = ({ webhookUrl, language }) => {
     setPhotoTaken(null);
   }, []);
   
+  // Function to save photo to device gallery
+  const savePhotoToGallery = useCallback(async () => {
+    if (!photoTaken) return;
+    
+    try {
+      // For mobile devices, we need to create a temporary anchor element
+      const link = document.createElement('a');
+      
+      // Set download attribute with filename
+      const timestamp = new Date().toISOString().replace(/:/g, '-');
+      const filename = `tyokaveri_photo_${timestamp}.jpg`;
+      link.download = filename;
+      
+      // Set href to the photo data URL
+      link.href = photoTaken;
+      
+      // Append to document, click programmatically, then remove
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      toast({
+        title: t.photoSaved || "Photo saved",
+        description: t.photoSavedSuccess || "Photo was saved to your device",
+      });
+    } catch (error) {
+      console.error('Error saving photo:', error);
+      toast({
+        title: t.saveError || "Save Error",
+        description: error instanceof Error ? error.message : t.unknownError || "Unknown error",
+        variant: "destructive",
+      });
+    }
+  }, [photoTaken, t]);
+
   const uploadPhoto = useCallback(async () => {
     if (!photoTaken) return;
     
@@ -211,7 +247,22 @@ export const Camera: React.FC<CameraProps> = ({ webhookUrl, language }) => {
                 (t.sendPhoto || "Send Photo")
               }
             </Button>
-            <Button onClick={resetPhoto} variant="outline" disabled={isUploading} type="button">
+            <Button 
+              onClick={savePhotoToGallery} 
+              variant="secondary" 
+              disabled={isUploading} 
+              type="button"
+              className="flex items-center gap-1"
+            >
+              <Download size={16} />
+              {t.saveToGallery || "Save to Gallery"}
+            </Button>
+            <Button 
+              onClick={resetPhoto} 
+              variant="outline" 
+              disabled={isUploading} 
+              type="button"
+            >
               {t.retakePhoto || "Retake"}
             </Button>
           </>

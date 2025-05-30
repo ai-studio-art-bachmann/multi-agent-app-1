@@ -50,6 +50,7 @@ export interface Translations {
   // Camera component
   startCamera: string;
   takePhoto: string;
+  stopCamera: string;
   retakePhoto: string;
   sendPhoto: string;
   capturedPhoto: string;
@@ -58,6 +59,12 @@ export interface Translations {
   cameraPermissionDenied: string;
   photoSent: string;
   photoSentSuccess: string;
+  saveToGallery: string;
+  photoSaved: string;
+  photoSavedSuccess: string;
+  saveError: string;
+  uploadError: string;
+  uploading: string;
 
   // File upload component
   selectFile: string;
@@ -109,6 +116,7 @@ export const translations: Record<'fi' | 'et' | 'en', Translations> = {
     // Camera component
     startCamera: 'Käynnistä kamera',
     takePhoto: 'Ota kuva',
+    stopCamera: 'Pysäytä kamera',
     retakePhoto: 'Ota uusi kuva',
     sendPhoto: 'Lähetä kuva',
     capturedPhoto: 'Otettu kuva',
@@ -117,6 +125,12 @@ export const translations: Record<'fi' | 'et' | 'en', Translations> = {
     cameraPermissionDenied: 'Kameran käyttöoikeus evätty',
     photoSent: 'Kuva lähetetty',
     photoSentSuccess: 'Kuva lähetetty onnistuneesti',
+    saveToGallery: 'Tallenna galleriaan',
+    photoSaved: 'Kuva tallennettu',
+    photoSavedSuccess: 'Kuva tallennettu laitteellesi',
+    saveError: 'Virhe tallennuksessa',
+    uploadError: 'Virhe lähetyksessä',
+    uploading: 'Lähetetään...',
     
     // File upload component
     selectFile: 'Valitse tiedosto',
@@ -166,6 +180,7 @@ export const translations: Record<'fi' | 'et' | 'en', Translations> = {
     // Camera component
     startCamera: 'Käivita kaamera',
     takePhoto: 'Tee pilt',
+    stopCamera: 'Peata kaamera',
     retakePhoto: 'Tee uus pilt',
     sendPhoto: 'Saada pilt',
     capturedPhoto: 'Tehtud pilt',
@@ -174,6 +189,12 @@ export const translations: Record<'fi' | 'et' | 'en', Translations> = {
     cameraPermissionDenied: 'Kaamera kasutamise õigus keelatud',
     photoSent: 'Pilt saadetud',
     photoSentSuccess: 'Pilt edukalt saadetud',
+    saveToGallery: 'Salvesta galeriisse',
+    photoSaved: 'Pilt salvestatud',
+    photoSavedSuccess: 'Pilt salvestatud sinu seadmesse',
+    saveError: 'Viga salvestamisel',
+    uploadError: 'Viga saatmisel',
+    uploading: 'Saatmine...',
     
     // File upload component
     selectFile: 'Vali fail',
@@ -223,6 +244,7 @@ export const translations: Record<'fi' | 'et' | 'en', Translations> = {
     // Camera component
     startCamera: 'Start camera',
     takePhoto: 'Take photo',
+    stopCamera: 'Stop camera',
     retakePhoto: 'Retake photo',
     sendPhoto: 'Send photo',
     capturedPhoto: 'Captured photo',
@@ -231,6 +253,12 @@ export const translations: Record<'fi' | 'et' | 'en', Translations> = {
     cameraPermissionDenied: 'Camera permission denied',
     photoSent: 'Photo sent',
     photoSentSuccess: 'Photo sent successfully',
+    saveToGallery: 'Save to Gallery',
+    photoSaved: 'Photo saved',
+    photoSavedSuccess: 'Photo saved to your device',
+    saveError: 'Save error',
+    uploadError: 'Upload error',
+    uploading: 'Uploading...',
     
     // File upload component
     selectFile: 'Select file',
