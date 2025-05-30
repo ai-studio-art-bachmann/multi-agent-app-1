@@ -73,6 +73,13 @@ export interface Translations {
   photoWillBeSavedAs: string;
   voiceTextRecognized: string;
   confirmAndSend: string;
+  processingStatus: string;
+  resetButtonLabel: string;
+  savePhotoButtonLabel: string;
+  recordingStatus: string;
+  generatedFilenameLabel: string;
+  uploadConfirmQuestionPrompt: string;
+  uploadButtonLabel: string;
 
   // File upload component
   selectFile: string;
@@ -147,6 +154,13 @@ export const translations: Record<'fi' | 'et' | 'en', Translations> = {
     photoWillBeSavedAs: 'Kuva tallennetaan nimellä:',
     voiceTextRecognized: 'Tunnistettu äänikommentti:',
     confirmAndSend: 'Vahvista ja lähetä',
+    processingStatus: 'Käsitellään...',
+    resetButtonLabel: 'Nollaa',
+    savePhotoButtonLabel: 'Tallenna kuva',
+    recordingStatus: 'Nauhoitetaan...',
+    generatedFilenameLabel: 'Luotu tiedostonimi:',
+    uploadConfirmQuestionPrompt: 'Haluatko ladata kuvan tällä nimellä?',
+    uploadButtonLabel: 'Lataa',
     
     // File upload component
     selectFile: 'Valitse tiedosto',
@@ -219,6 +233,13 @@ export const translations: Record<'fi' | 'et' | 'en', Translations> = {
     photoWillBeSavedAs: 'Pilt salvestatakse nimega:',
     voiceTextRecognized: 'Tuvastatud häälkommentaar:',
     confirmAndSend: 'Kinnita ja saada',
+    processingStatus: 'Töötlemisel...',
+    resetButtonLabel: 'Lähtesta',
+    savePhotoButtonLabel: 'Salvesta pilt',
+    recordingStatus: 'Salvestan...',
+    generatedFilenameLabel: 'Genereeritud failinimi:',
+    uploadConfirmQuestionPrompt: 'Kas soovid pildi selle nimega üles laadida?',
+    uploadButtonLabel: 'Laadi üles',
     
     // File upload component
     selectFile: 'Vali fail',
@@ -290,7 +311,14 @@ export const translations: Record<'fi' | 'et' | 'en', Translations> = {
     confirmPhotoName: 'Confirm photo name',
     photoWillBeSavedAs: 'Photo will be saved as:',
     voiceTextRecognized: 'Voice text recognized:',
-    confirmAndSend: 'Confirm & Send',
+    confirmAndSend: 'Confirm and Send',
+    processingStatus: 'Processing...',
+    resetButtonLabel: 'Reset',
+    savePhotoButtonLabel: 'Save Photo',
+    recordingStatus: 'Recording...',
+    generatedFilenameLabel: 'Generated filename:',
+    uploadConfirmQuestionPrompt: 'Do you want to upload the photo with this name?',
+    uploadButtonLabel: 'Upload',
     
     // File upload component
     selectFile: 'Select file',

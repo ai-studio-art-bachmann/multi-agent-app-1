@@ -7,6 +7,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { SessionManager } from '@/utils/sessionManager';
 import { getCurrentOrientation, addOrientationChangeListener, adjustVideoStyle, adjustContainerStyle, Orientation, CameraFacing, toggleCameraFacing, getCameraConstraints, setZoomLevel } from '@/utils/orientationUtils';
 
+// Kasutame globaalseid tüüpe SpeechRecognition jaoks
+// Define more specific types for SpeechRecognition
 interface PhotoVoiceCaptureProps {
   webhookUrl: string;
   language: 'fi' | 'et' | 'en';
@@ -34,69 +36,8 @@ export const PhotoVoiceCapture: React.FC<PhotoVoiceCaptureProps> = ({ webhookUrl
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const t = getTranslations(language);
 
-  // Kõnetehnoloogia initialiseerimine
-  useEffect(() => {
-    // Kontrollime, kas brauser toetab kõnetuvastust
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      console.error('Speech recognition not supported in this browser');
-      return;
-    }
-    
-    // Loome uue instantsi, kuid ei käivita seda veel
-    const recognition = new SpeechRecognition();
-    recognition.continuous = false;
-    recognition.interimResults = false;
-    
-    // Määrame keele vastavalt rakenduse keelele
-    switch (language) {
-      case 'fi':
-        recognition.lang = 'fi-FI';
-        break;
-      case 'et':
-        recognition.lang = 'et-EE';
-        break;
-      case 'en':
-      default:
-        recognition.lang = 'en-US';
-        break;
-    }
-    
-    // Seadistame sündmuste töötlejad
-    recognition.onresult = (event) => {
-      const transcript = event.results[0][0].transcript;
-      console.log('Voice recognition result:', transcript);
-      setVoiceText(transcript);
-      processVoiceText(transcript);
-    };
-    
-    recognition.onerror = (event) => {
-      console.error('Speech recognition error:', event.error);
-      setIsRecording(false);
-      toast({
-        title: t.voiceError || "Voice Error",
-        description: event.error,
-        variant: "destructive"
-      });
-    };
-    
-    recognition.onend = () => {
-      setIsRecording(false);
-      console.log('Speech recognition ended');
-    };
-    
-    recognitionRef.current = recognition;
-    
-    // Puhastame, kui komponent eemaldatakse
-    return () => {
-      if (recognitionRef.current) {
-        recognitionRef.current.abort();
-      }
-    };
-  }, [language, t]);
-
   // Funktsioon failinime genereerimiseks häälsisendist
-  const processVoiceText = (text: string) => {
+  const processVoiceText = useCallback((text: string) => {
     setIsProcessing(true);
     
     try {
@@ -118,17 +59,112 @@ export const PhotoVoiceCapture: React.FC<PhotoVoiceCaptureProps> = ({ webhookUrl
       console.log('Generated filename:', filename);
       setGeneratedFilename(filename);
       setShowConfirmDialog(true);
-      setIsProcessing(false);
+      // setIsProcessing(false) eemaldatud siit, kuna see toimub onend või onerror
     } catch (error) {
       console.error('Error processing voice text:', error);
-      setIsProcessing(false);
       toast({
         title: t.unknownError || "Error",
         description: "Failed to process voice command",
         variant: "destructive"
       });
+    } finally {
+      setIsProcessing(false); // Tagame, et see alati käivitub
     }
-  };
+  }, [t, setGeneratedFilename, setShowConfirmDialog, setIsProcessing]);
+
+  // Kõnetehnoloogia initialiseerimine
+  useEffect(() => {
+    // Kontrollime, kas brauser toetab kõnetuvastust ja kas SpeechRecognition API on saadaval
+    const SpeechRecognitionAPI: typeof SpeechRecognition | undefined = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognitionAPI) {
+      console.error('Speech Recognition API is not supported in this browser.');
+      toast({
+        title: t.voiceError || "Voice Error",
+        description: "Speech Recognition is not supported in this browser.", // TODO: Consider a translation key
+        variant: "destructive"
+      });
+      return; // Välju useEffect konksust, kui API pole saadaval
+    }
+
+    // Loome uue instantsi, kuid ei käivita seda veel
+    const recognition: SpeechRecognition = new SpeechRecognitionAPI();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    
+    // Määrame keele vastavalt rakenduse keelele
+    switch (language) {
+      case 'fi':
+        recognition.lang = 'fi-FI';
+        break;
+      case 'et':
+        recognition.lang = 'et-EE';
+        break;
+      case 'en':
+      default:
+        recognition.lang = 'en-US';
+        break;
+    }
+    
+    // Seadistame sündmuste töötlejad
+    recognition.onresult = (event: SpeechRecognitionEvent) => {
+      const transcript = event.results[0][0].transcript;
+      console.log('Voice recognition result:', transcript);
+      setVoiceText(transcript);
+      processVoiceText(transcript);
+    };
+    
+    recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+      console.error('Speech recognition error:', event);
+      setIsRecording(false);
+      toast({
+        title: t.voiceError || "Voice Error",
+        description: "Speech recognition error",
+        variant: "destructive"
+      });
+    };
+    
+    recognition.onstart = (event: Event) => {
+      setIsRecording(true);
+      console.log('Speech recognition started');
+    };
+
+    recognition.onend = (event: Event) => {
+      setIsRecording(false);
+      console.log('Speech recognition ended');
+    };
+    
+    recognitionRef.current = recognition;
+    
+    // Puhastame, kui komponent eemaldatakse
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.abort();
+      }
+    };
+  }, [language, t, processVoiceText]);
+
+  // Funktsioon häälsalvestuse käivitamiseks ja peatamiseks
+  const toggleVoiceCapture = useCallback(() => {
+    if (recognitionRef.current) {
+      if (isRecording) {
+        recognitionRef.current.stop();
+        // setIsRecording(false) will be handled by onend event
+      } else {
+        // Puhastame varasemad tulemused enne uue salvestuse alustamist
+        setVoiceText(''); 
+        setGeneratedFilename(''); 
+        recognitionRef.current.start();
+        // setIsRecording(true) will be handled by onstart event
+      }
+    } else {
+      console.error("Speech recognition not initialized");
+      toast({
+        title: t.voiceError || "Voice Error",
+        description: "Speech recognition not initialized.", // TODO: Consider a translation key
+        variant: "destructive"
+      });
+    }
+  }, [isRecording, t, setVoiceText, setGeneratedFilename]);
 
   // Kaamera käivitamine
   const startCamera = useCallback(async (facing?: CameraFacing) => {
@@ -212,7 +248,7 @@ export const PhotoVoiceCapture: React.FC<PhotoVoiceCaptureProps> = ({ webhookUrl
       });
       setIsSwitchingCamera(false);
     }
-  }, [t, cameraFacing, zoomLevel]);
+  }, [t, cameraFacing, zoomLevel, setCameraFacing, setIsSwitchingCamera, setOrientation, setIsZoomSupported, setIsCameraOn]);
 
   // Kaamera peatamine
   const stopCamera = useCallback(() => {
@@ -328,7 +364,7 @@ export const PhotoVoiceCapture: React.FC<PhotoVoiceCaptureProps> = ({ webhookUrl
     } catch (error) {
       console.error('Error setting zoom level:', error);
     }
-  }, [isZoomSupported]);
+  }, [isZoomSupported, setZoomLevelState]);
   
   // Funktsioon zoom suurendamiseks
   const zoomIn = useCallback(() => {
@@ -462,6 +498,20 @@ export const PhotoVoiceCapture: React.FC<PhotoVoiceCaptureProps> = ({ webhookUrl
     }
   }, [photoTaken, generatedFilename, t]);
 
+  // Käivita kaamera automaatselt, kui komponent laetakse
+  useEffect(() => {
+    console.log('PhotoVoiceCapture component mounted - starting camera automatically');
+    // Väike viivitus, et vältida probleeme komponendi esialgsel renderdamisel
+    const timer = setTimeout(() => {
+      startCamera();
+    }, 500);
+    
+    return () => {
+      clearTimeout(timer);
+      stopCamera();
+    };
+  }, [startCamera, stopCamera]);
+  
   // Jälgi ekraani orientatsiooni muutusi
   useEffect(() => {
     // Esialgne orientatsiooni seadistamine
@@ -485,9 +535,8 @@ export const PhotoVoiceCapture: React.FC<PhotoVoiceCaptureProps> = ({ webhookUrl
     // Eemaldame kuulaja, kui komponent eemaldatakse
     return () => {
       removeListener();
-      stopCamera();
     };
-  }, [isCameraOn, stopCamera]);
+  }, [isCameraOn]);
 
   // HTML canvas element for taking photos
   return (
@@ -505,10 +554,11 @@ export const PhotoVoiceCapture: React.FC<PhotoVoiceCaptureProps> = ({ webhookUrl
             className={`w-full h-full ${isCameraOn ? 'block' : 'hidden'}`}
           />
           {!isCameraOn && (
-            <div className="absolute inset-0 flex items-center justify-center bg-gray-800">
-              <div className="w-20 h-20 bg-gray-600 rounded-lg flex items-center justify-center">
-                <Camera size={40} color="#d1d5db" />
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-800">
+              <div className="w-20 h-20 bg-gray-600 rounded-lg flex items-center justify-center mb-4">
+                <Camera size={40} color="#d1d5db" className={"animate-pulse"} />
               </div>
+              <p className="text-white text-sm animate-pulse">Kaamera käivitamine...</p>
             </div>
           )}
           
@@ -586,37 +636,41 @@ export const PhotoVoiceCapture: React.FC<PhotoVoiceCaptureProps> = ({ webhookUrl
         {!isCameraOn && !photoTaken && (
           <Button onClick={() => startCamera()} className="bg-blue-500 hover:bg-blue-600" type="button">
             <Camera size={16} className="mr-2" />
-            {t.startCamera || "Start Camera"}
+            {t?.startCamera || "Start Camera"}
           </Button>
         )}
         
         {isCameraOn && !photoTaken && (
-          <Button onClick={takePhoto} className="bg-green-500 hover:bg-green-600" type="button">
+          <Button onClick={() => takePhoto()} className="bg-green-500 hover:bg-green-600" type="button">
             <Camera size={16} className="mr-2" />
-            {t.takePhoto || "Take Photo"}
+            {t?.takePhoto || "Take Photo"}
           </Button>
         )}
         
         {photoTaken && !isRecording && !showConfirmDialog && (
           <>
-            <Button 
-              onClick={startVoiceRecognition} 
-              className="bg-purple-500 hover:bg-purple-600" 
+            <Button
+              onClick={() => toggleVoiceCapture()}
+              className={`transition-colors duration-150 ${isRecording ? 'bg-red-500 hover:bg-red-600' : 'bg-purple-500 hover:bg-purple-600'}`}
               type="button"
-              disabled={isProcessing}
+              disabled={isProcessing || isSwitchingCamera}
             >
               <Mic size={16} className="mr-2" />
-              {isProcessing ? (t.processing || "Processing...") : (t.addVoiceComment || "Add Voice Comment")}
+              {isProcessing
+                ? t.processingStatus
+                : isRecording
+                ? t.recordingStatus 
+                : t.addVoiceComment}
             </Button>
             
-            <Button onClick={resetPhoto} className="bg-gray-500 hover:bg-gray-600" type="button">
+            <Button onClick={() => resetPhoto()} className="bg-gray-500 hover:bg-gray-600" type="button">
               <RotateCcw size={16} className="mr-2" />
-              {t.reset || "Reset"}
+              {t.resetButtonLabel}
             </Button>
             
-            <Button onClick={savePhotoToGallery} className="bg-blue-500 hover:bg-blue-600" type="button">
+            <Button onClick={() => savePhotoToGallery()} className="bg-blue-500 hover:bg-blue-600" type="button">
               <Download size={16} className="mr-2" />
-              {t.savePhoto || "Save Photo"}
+              {t.savePhotoButtonLabel}
             </Button>
           </>
         )}
@@ -624,32 +678,32 @@ export const PhotoVoiceCapture: React.FC<PhotoVoiceCaptureProps> = ({ webhookUrl
         {isRecording && (
           <div className="flex items-center bg-red-500 text-white px-3 py-2 rounded-md animate-pulse">
             <Mic size={16} className="mr-2" />
-            {t.recording || "Recording..."}
+            {t.recordingStatus}
           </div>
         )}
       </div>
       
       {/* Confirmation dialog for voice comment */}
-      <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+      <Dialog open={showConfirmDialog} onOpenChange={(open: boolean) => setShowConfirmDialog(open)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{t.confirmPhotoName || "Confirm Photo Name"}</DialogTitle>
+            <DialogTitle>{t.confirmPhotoName}</DialogTitle>
           </DialogHeader>
           <div className="py-4">
-            <p className="mb-2">{t.voiceRecognized || "Voice comment recognized as:"}</p>
+            <p className="mb-2">{t.voiceTextRecognized}</p>
             <p className="bg-gray-100 p-3 rounded-md font-mono break-all">{voiceText}</p>
-            <p className="mt-4 mb-2">{t.generatedFilename || "Generated filename:"}</p>
+            <p className="mt-4 mb-2">{t.generatedFilenameLabel}</p>
             <p className="bg-gray-100 p-3 rounded-md font-mono break-all">{generatedFilename}</p>
-            <p className="mt-4 text-sm text-gray-500">{t.uploadConfirmQuestion || "Do you want to upload the photo with this name?"}</p>
+            <p className="mt-4 text-sm text-gray-500">{t.uploadConfirmQuestionPrompt}</p>
           </div>
           <DialogFooter className="flex space-x-2">
-            <Button onClick={cancelConfirmation} variant="outline" className="flex-1">
+            <Button onClick={() => cancelConfirmation()} variant="outline" className="flex-1">
               <X size={16} className="mr-2" />
-              {t.cancel || "Cancel"}
+              {t.cancel}
             </Button>
-            <Button onClick={uploadPhotoWithVoice} disabled={isUploading} className="flex-1 bg-green-500 hover:bg-green-600">
+            <Button onClick={() => uploadPhotoWithVoice()} disabled={isUploading} className="flex-1 bg-green-500 hover:bg-green-600">
               <Check size={16} className="mr-2" />
-              {isUploading ? (t.uploading || "Uploading...") : (t.upload || "Upload")}
+              {isUploading ? t.uploading : t.uploadButtonLabel}
             </Button>
           </DialogFooter>
         </DialogContent>

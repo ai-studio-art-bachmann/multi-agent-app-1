@@ -249,6 +249,20 @@ export const Camera: React.FC<CameraProps> = ({ webhookUrl, language }) => {
     }
   }, [photoTaken, webhookUrl, t]);
 
+  // Käivita kaamera automaatselt, kui komponent laetakse
+  useEffect(() => {
+    console.log('Camera component mounted - starting camera automatically');
+    // Väike viivitus, et vältida probleeme komponendi esialgsel renderdamisel
+    const timer = setTimeout(() => {
+      startCamera();
+    }, 500);
+    
+    return () => {
+      clearTimeout(timer);
+      stopCamera();
+    };
+  }, [startCamera, stopCamera]);
+
   // Jälgi ekraani orientatsiooni muutusi
   useEffect(() => {
     // Esialgne orientatsiooni seadistamine
@@ -346,10 +360,11 @@ export const Camera: React.FC<CameraProps> = ({ webhookUrl, language }) => {
             className={`w-full h-full ${isCameraOn ? 'block' : 'hidden'}`}
           />
           {!isCameraOn && (
-            <div className="absolute inset-0 flex items-center justify-center bg-gray-800">
-              <div className="w-20 h-20 bg-gray-600 rounded-lg flex items-center justify-center">
-                <CameraIcon size={40} color="#d1d5db" />
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-800">
+              <div className="w-20 h-20 bg-gray-600 rounded-lg flex items-center justify-center mb-4">
+                <CameraIcon size={40} color="#d1d5db" className={"animate-pulse"} />
               </div>
+              <p className="text-white text-sm animate-pulse">Kaamera käivitamine...</p>
             </div>
           )}
           
