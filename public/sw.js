@@ -1,4 +1,4 @@
-const CACHE_NAME = 'tyokalu-app-v4';  // Updated version
+const CACHE_NAME = 'tyokalu-app-v5';  // Increment version to force cache refresh
 const STATIC_CACHE_URLS = [
   '/',
   '/index.html',
@@ -7,6 +7,13 @@ const STATIC_CACHE_URLS = [
   '/icons/favicon.ico',
   '/icons/maskable-192.png',
   '/icons/maskable-512.png'
+];
+
+// Define regex patterns for assets that should NOT be cached
+const NEVER_CACHE_PATTERNS = [
+  /\.js$/,  // Don't cache JS files - they're hashed by Vite and change with each build
+  /\.css$/,  // Don't cache CSS files - they're also hashed
+  /assets\//  // Don't cache anything in the assets directory
 ];
 
 // Install event - cache static resources
@@ -64,7 +71,24 @@ self.addEventListener('fetch', (event) => {
   if (!event.request.url.startsWith(self.location.origin)) {
     return;
   }
+  
+  // Check if this is a resource we should never cache
+  const url = new URL(event.request.url);
+  const shouldNotCache = NEVER_CACHE_PATTERNS.some(pattern => pattern.test(url.pathname));
+  
+  // For JavaScript, CSS, and assets files, always go to network first
+  if (shouldNotCache) {
+    event.respondWith(
+      fetch(event.request)
+        .catch(() => {
+          // Only fall back to cache if network fails completely
+          return caches.match(event.request);
+        })
+    );
+    return;
+  }
 
+  // For other resources, try cache first, then network
   event.respondWith(
     caches.match(event.request)
       .then((response) => {
@@ -86,8 +110,8 @@ self.addEventListener('fetch', (event) => {
             // Clone the response since it's a stream
             const responseToCache = response.clone();
 
-            // Cache successful responses for static assets
-            if (STATIC_CACHE_URLS.includes(new URL(event.request.url).pathname)) {
+            // Only cache static assets in the STATIC_CACHE_URLS list
+            if (STATIC_CACHE_URLS.includes(url.pathname)) {
               caches.open(CACHE_NAME)
                 .then((cache) => {
                   cache.put(event.request, responseToCache);

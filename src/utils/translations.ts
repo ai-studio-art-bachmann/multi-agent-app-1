@@ -46,6 +46,7 @@ export interface Translations {
   audioTab: string;
   filesTab: string;
   cameraTab: string;
+  photoVoiceTab: string;
 
   // Camera component
   startCamera: string;
@@ -65,6 +66,13 @@ export interface Translations {
   saveError: string;
   uploadError: string;
   uploading: string;
+
+  // PhotoVoice component
+  addVoiceComment: string;
+  confirmPhotoName: string;
+  photoWillBeSavedAs: string;
+  voiceTextRecognized: string;
+  confirmAndSend: string;
 
   // File upload component
   selectFile: string;
@@ -112,6 +120,7 @@ export const translations: Record<'fi' | 'et' | 'en', Translations> = {
     audioTab: 'Ääni',
     filesTab: 'Tiedostot',
     cameraTab: 'Kamera',
+    photoVoiceTab: 'Kuva+Ääni',
     
     // Camera component
     startCamera: 'Käynnistä kamera',
@@ -131,6 +140,13 @@ export const translations: Record<'fi' | 'et' | 'en', Translations> = {
     saveError: 'Virhe tallennuksessa',
     uploadError: 'Virhe lähetyksessä',
     uploading: 'Lähetetään...',
+    
+    // PhotoVoice component
+    addVoiceComment: 'Lisää äänikommentti',
+    confirmPhotoName: 'Vahvista kuvan nimi',
+    photoWillBeSavedAs: 'Kuva tallennetaan nimellä:',
+    voiceTextRecognized: 'Tunnistettu äänikommentti:',
+    confirmAndSend: 'Vahvista ja lähetä',
     
     // File upload component
     selectFile: 'Valitse tiedosto',
@@ -176,6 +192,7 @@ export const translations: Record<'fi' | 'et' | 'en', Translations> = {
     audioTab: 'Hääl',
     filesTab: 'Tiedostot',
     cameraTab: 'Kaamera',
+    photoVoiceTab: 'Pilt+Hääl',
     
     // Camera component
     startCamera: 'Käivita kaamera',
@@ -195,6 +212,13 @@ export const translations: Record<'fi' | 'et' | 'en', Translations> = {
     saveError: 'Viga salvestamisel',
     uploadError: 'Viga saatmisel',
     uploading: 'Saatmine...',
+    
+    // PhotoVoice component
+    addVoiceComment: 'Lisa häälkommentaar',
+    confirmPhotoName: 'Kinnita pildi nimi',
+    photoWillBeSavedAs: 'Pilt salvestatakse nimega:',
+    voiceTextRecognized: 'Tuvastatud häälkommentaar:',
+    confirmAndSend: 'Kinnita ja saada',
     
     // File upload component
     selectFile: 'Vali fail',
@@ -240,6 +264,7 @@ export const translations: Record<'fi' | 'et' | 'en', Translations> = {
     audioTab: 'Audio',
     filesTab: 'Files',
     cameraTab: 'Camera',
+    photoVoiceTab: 'Photo+Voice',
     
     // Camera component
     startCamera: 'Start camera',
@@ -259,6 +284,13 @@ export const translations: Record<'fi' | 'et' | 'en', Translations> = {
     saveError: 'Save error',
     uploadError: 'Upload error',
     uploading: 'Uploading...',
+    
+    // PhotoVoice component
+    addVoiceComment: 'Add voice comment',
+    confirmPhotoName: 'Confirm photo name',
+    photoWillBeSavedAs: 'Photo will be saved as:',
+    voiceTextRecognized: 'Voice text recognized:',
+    confirmAndSend: 'Confirm & Send',
     
     // File upload component
     selectFile: 'Select file',

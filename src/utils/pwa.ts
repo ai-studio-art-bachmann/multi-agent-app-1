@@ -53,6 +53,15 @@ export const registerServiceWorker = async () => {
     try {
       // Register the service worker with a cache-busting query parameter
       const swUrl = `/sw.js?v=${new Date().getTime()}`;
+      
+      // Unregister any existing service workers first to ensure clean state
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      for (const registration of registrations) {
+        await registration.unregister();
+        console.log('Unregistered old service worker');
+      }
+      
+      // Register the new service worker
       const registration = await navigator.serviceWorker.register(swUrl);
       console.log('Service Worker registered successfully:', registration);
       
@@ -102,7 +111,7 @@ const setupUpdateHandling = (registration, preferences) => {
 };
 
 // Handle a new service worker that's ready to take over
-const handleNewServiceWorker = (worker, preferences) => {
+const handleNewServiceWorker = (worker: ServiceWorker, preferences: { autoUpdate: boolean, lastDecision: string | null }) => {
   // If user has opted for auto-updates, apply the update silently
   if (preferences.autoUpdate) {
     console.log('Auto-updating based on user preferences');
@@ -178,17 +187,57 @@ const handleNewServiceWorker = (worker, preferences) => {
   });
 };
 
+// Type declaration to ensure TypeScript recognizes window properties
+declare global {
+  interface Window {
+    caches: CacheStorage;
+  }
+}
+
 // Apply the update by sending SKIP_WAITING to the service worker
-const applyUpdate = (worker) => {
+const applyUpdate = (worker: ServiceWorker) => {
   console.log('Applying update...');
   
   // Set up reload listener before sending the message
   let reloadingPage = false;
+  
+  // Function to reload the page
+  const reloadPage = () => {
+    if (typeof window !== 'undefined' && window.location) {
+      window.location.reload();
+    }
+  };
+  
+  // Function to clear caches and reload
+  const clearCachesAndReload = () => {
+    if (typeof window !== 'undefined' && 'caches' in window) {
+      window.caches.keys()
+        .then(cacheNames => {
+          return Promise.all(
+            cacheNames.map(cacheName => {
+              console.log('Deleting cache:', cacheName);
+              return window.caches.delete(cacheName);
+            })
+          );
+        })
+        .then(() => {
+          console.log('All caches cleared, reloading page');
+          reloadPage();
+        })
+        .catch(err => {
+          console.error('Error clearing caches:', err);
+          reloadPage();
+        });
+    } else {
+      reloadPage();
+    }
+  };
+  
   navigator.serviceWorker.addEventListener('controllerchange', () => {
     if (reloadingPage) return;
     reloadingPage = true;
     console.log('New service worker activated, reloading page');
-    window.location.reload();
+    clearCachesAndReload();
   });
   
   // Send the message to skip waiting

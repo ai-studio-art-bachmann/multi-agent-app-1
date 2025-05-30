@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { VoiceButton } from '@/components/VoiceButton';
 import { Camera } from '@/components/Camera';
+import { PhotoVoiceCapture } from '@/components/PhotoVoiceCapture';
 import { FileUploadComponent } from '@/components/FileUploadComponent';
 import { TabSelector, TabType } from '@/components/TabSelector';
 import { Button } from '@/components/ui/button';
@@ -107,6 +108,14 @@ export const InteractionPanel: React.FC<InteractionPanelProps> = ({
           {/* Camera tab */}
           {activeTab === 'camera' && (
             <Camera 
+              language={language}
+              webhookUrl={webhookUrl}
+            />
+          )}
+          
+          {/* PhotoVoice tab - Photo with voice comment */}
+          {activeTab === 'photoVoice' && (
+            <PhotoVoiceCapture
               language={language}
               webhookUrl={webhookUrl}
             />
