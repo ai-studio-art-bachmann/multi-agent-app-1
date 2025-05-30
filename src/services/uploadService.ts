@@ -1,14 +1,20 @@
 /**
  * Service for handling file and photo uploads to n8n webhook
  */
+import { SessionManager } from '@/utils/sessionManager';
 
 interface UploadMetadata {
+  // Required metadata fields
+  userId: string;
+  sessionId: string;
+  timestamp: string;
+  
+  // File-specific metadata
   contentType: string;
   fileName: string;
   fileSize: number;
   fileType: string;
   uploadType: 'file' | 'photo';
-  timestamp: string;
   deviceInfo?: string;
 }
 
@@ -27,14 +33,22 @@ export const uploadFile = async (file: File, webhookUrl: string): Promise<boolea
     // Add the file
     formData.append('file', file);
     
+    // Get session metadata
+    const sessionMeta = SessionManager.getMetadata();
+    
     // Create metadata for n8n processing
     const metadata: UploadMetadata = {
+      // Required metadata fields
+      userId: sessionMeta.userId,
+      sessionId: sessionMeta.sessionId,
+      timestamp: sessionMeta.timestamp,
+      
+      // File-specific metadata
       contentType: file.type,
       fileName: file.name,
       fileSize: file.size,
       fileType: file.type.split('/')[0] || 'unknown',
       uploadType: 'file',
-      timestamp: new Date().toISOString(),
       deviceInfo: navigator.userAgent
     };
     
@@ -91,14 +105,22 @@ export const uploadPhoto = async (photoDataUrl: string, webhookUrl: string): Pro
     // Add the photo file
     formData.append('file', file);
     
+    // Get session metadata
+    const sessionMeta = SessionManager.getMetadata();
+    
     // Create metadata for n8n processing
     const metadata: UploadMetadata = {
+      // Required metadata fields
+      userId: sessionMeta.userId,
+      sessionId: sessionMeta.sessionId,
+      timestamp: sessionMeta.timestamp,
+      
+      // Photo-specific metadata
       contentType: 'image/jpeg',
       fileName: filename,
-      fileSize: file.size,
+      fileSize: blob.size,
       fileType: 'image',
       uploadType: 'photo',
-      timestamp: new Date().toISOString(),
       deviceInfo: navigator.userAgent
     };
     

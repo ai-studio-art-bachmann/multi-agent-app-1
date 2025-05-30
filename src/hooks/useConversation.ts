@@ -64,7 +64,9 @@ export const useConversation = (config: ConversationConfig) => {
       state.setVoiceState(prev => ({ ...prev, status: 'waiting' }));
       addSystemMessage(t.sendingToServer);
 
+      // Get response data from webhook service (might be a fallback response if webhook returns 404)
       const responseData = await webhookService.sendAudioToWebhook(audioBlob, config.webhookUrl);
+      console.log('Received response data:', responseData);
 
       state.setVoiceState(prev => ({ ...prev, status: 'playing', isPlaying: true }));
       addSystemMessage(t.processingResponse);
