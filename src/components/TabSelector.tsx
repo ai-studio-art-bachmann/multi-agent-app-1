@@ -2,7 +2,7 @@ import React from 'react';
 import { cn } from '@/lib/utils';
 import { getTranslations } from '@/utils/translations';
 
-export type TabType = 'audio' | 'camera' | 'files' | 'photoVoice';
+export type TabType = 'audio' | 'files' | 'photoVoice';
 
 interface TabSelectorProps {
   currentTab: TabType;
@@ -19,8 +19,7 @@ export const TabSelector: React.FC<TabSelectorProps> = ({
   
   const tabs = [
     { id: 'audio' as const, label: t.audioTab },
-    { id: 'camera' as const, label: t.cameraTab },
-    { id: 'photoVoice' as const, label: t.photoVoiceTab },
+    { id: 'photoVoice' as const, label: t.cameraTab },
     { id: 'files' as const, label: t.filesTab }
   ];
 
