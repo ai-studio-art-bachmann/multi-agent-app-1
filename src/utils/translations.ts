@@ -81,6 +81,15 @@ export interface Translations {
   uploadConfirmQuestionPrompt: string;
   uploadButtonLabel: string;
 
+  // Camera component - File Naming by Voice
+  giveFileNameByVoice: string;
+  tryNamingAgain: string;
+  fileNameRecognizedAs: string;
+  photoWillBeSentAs: string;
+  dictateFileName: string;
+  stopDictating: string;
+  processingName: string;
+
   // File upload component
   selectFile: string;
   sendFile: string;
@@ -116,7 +125,7 @@ export const translations: Record<'fi' | 'et' | 'en', Translations> = {
     processingAudio: 'Ääniviestin sisältö käsitellään...',
     resetConversation: 'Aloita alusta',
     pressToStart: 'Paina mikrofonia aloittaaksesi keskustelun',
-    footerText: '© AI Studio Art Bachmann',
+    footerText: ' AI Studio Art Bachmann',
     voiceError: 'Virhe äänikäskyssä',
     tryAgain: 'Yritä uudelleen',
     unknownError: 'Tuntematon virhe',
@@ -162,6 +171,15 @@ export const translations: Record<'fi' | 'et' | 'en', Translations> = {
     uploadConfirmQuestionPrompt: 'Haluatko ladata kuvan tällä nimellä?',
     uploadButtonLabel: 'Lataa',
     
+    // Camera component - File Naming by Voice
+    giveFileNameByVoice: 'Anna tiedostonimi äänellä',
+    tryNamingAgain: 'Yritä nimeämistä uudelleen',
+    fileNameRecognizedAs: 'Tiedostonimi tunnistettu:',
+    photoWillBeSentAs: 'Kuva lähetetään nimellä:',
+    dictateFileName: 'Aloita nimen saneleminen',
+    stopDictating: 'Lopeta nimen saneleminen',
+    processingName: 'Käsitellään nimeä...',
+
     // File upload component
     selectFile: 'Valitse tiedosto',
     sendFile: 'Lähetä tiedosto',
@@ -195,7 +213,7 @@ export const translations: Record<'fi' | 'et' | 'en', Translations> = {
     processingAudio: 'Helistsõnumi sisu töödeldakse...',
     resetConversation: 'Alusta otsast',
     pressToStart: 'Vajuta mikrofoni vestluse alustamiseks',
-    footerText: '© AI Studio Art Bachmann',
+    footerText: ' AI Studio Art Bachmann',
     voiceError: 'Viga häälkäskluses',
     tryAgain: 'Proovi uuesti',
     unknownError: 'Tundmatu viga',
@@ -241,6 +259,15 @@ export const translations: Record<'fi' | 'et' | 'en', Translations> = {
     uploadConfirmQuestionPrompt: 'Kas soovid pildi selle nimega üles laadida?',
     uploadButtonLabel: 'Laadi üles',
     
+    // Camera component - File Naming by Voice
+    giveFileNameByVoice: 'Sisesta failinimi häälega',
+    tryNamingAgain: 'Proovi uuesti nimetamist',
+    fileNameRecognizedAs: 'Failinimi tuvastatud:',
+    photoWillBeSentAs: 'Foto saadetakse nimega:',
+    dictateFileName: 'Alusta nime dikteerimist',
+    stopDictating: 'Lõpeta nime dikteerimine',
+    processingName: 'Töötlen nime...',
+
     // File upload component
     selectFile: 'Vali fail',
     sendFile: 'Saada fail',
@@ -274,7 +301,7 @@ export const translations: Record<'fi' | 'et' | 'en', Translations> = {
     processingAudio: 'Audio message content being processed...',
     resetConversation: 'Start over',
     pressToStart: 'Press microphone to start conversation',
-    footerText: '© AI Studio Art Bachmann',
+    footerText: ' AI Studio Art Bachmann',
     voiceError: 'Voice command error',
     tryAgain: 'Try again',
     unknownError: 'Unknown error',
@@ -320,6 +347,15 @@ export const translations: Record<'fi' | 'et' | 'en', Translations> = {
     uploadConfirmQuestionPrompt: 'Do you want to upload the photo with this name?',
     uploadButtonLabel: 'Upload',
     
+    // Camera component - File Naming by Voice
+    giveFileNameByVoice: 'Give filename by voice',
+    tryNamingAgain: 'Try naming again',
+    fileNameRecognizedAs: 'Filename recognized as:',
+    photoWillBeSentAs: 'Photo will be sent as:',
+    dictateFileName: 'Start dictating name',
+    stopDictating: 'Stop dictating name',
+    processingName: 'Processing name...',
+
     // File upload component
     selectFile: 'Select file',
     sendFile: 'Send file',
