@@ -26,6 +26,15 @@ export const useCamera = (): CameraHookReturn => {
     console.log('[useCamera] Attempting to open camera...');
     setIsOpening(true);
     setError(null);
+
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      const noMediaDevicesMsg = '[useCamera] Camera API (navigator.mediaDevices.getUserMedia) not available.';
+      console.error(noMediaDevicesMsg);
+      setError('Kamera-API ei ole käytettävissä selaimessasi. Varmista, että käytät modernia selainta ja HTTPS-yhteyttä.');
+      setIsOpening(false);
+      return;
+    }
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
@@ -112,9 +121,41 @@ export const useCamera = (): CameraHookReturn => {
       setIsOpen(true);
       console.log('[useCamera] Camera opened successfully.');
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Kameran avaus epäonnistui';
-      console.error('[useCamera] Error opening camera:', errorMessage, err);
-      setError(errorMessage);
+      let specificErrorMessage = 'Kameran avaus epäonnistui tuntemattomasta syystä.';
+      if (err instanceof Error) {
+        console.error(`[useCamera] Error opening camera: ${err.name} - ${err.message}`, err);
+        switch (err.name) {
+          case 'NotAllowedError':
+          case 'PermissionDeniedError': // Some browsers use this
+            specificErrorMessage = 'Kameran käyttölupa evätty. Tarkista selaimesi asetukset.';
+            break;
+          case 'NotFoundError':
+          case 'DevicesNotFoundError': // Some browsers use this
+            specificErrorMessage = 'Kameraa ei löytynyt. Varmista, että kamera on yhdistetty ja toimii.';
+            break;
+          case 'NotReadableError':
+          case 'TrackStartError': // Some browsers use this for hardware issues
+            specificErrorMessage = 'Kameran lukuvirhe. Kamera saattaa olla toisen sovelluksen käytössä tai siinä on tekninen vika.';
+            break;
+          case 'OverconstrainedError':
+          case 'ConstraintNotSatisfiedError': // Some browsers use this
+            specificErrorMessage = 'Kamera ei tue pyydettyjä asetuksia (esim. resoluutio).';
+            break;
+          case 'SecurityError':
+            specificErrorMessage = 'Kameran käyttö estetty turvallisuussyistä (esim. ei HTTPS-yhteyttä tai iframe-rajoitukset).';
+            break;
+          case 'TypeError': // Can happen if constraints are malformed
+             specificErrorMessage = 'Virheelliset kamera-asetukset.';
+             break;
+          default:
+            specificErrorMessage = `Kameran avaus epäonnistui: ${err.message}`;
+        }
+      } else {
+        console.error('[useCamera] Error opening camera (unknown error type):', err);
+      }
+      setError(specificErrorMessage);
+      // Ensure internal state is consistent on failure
+      setIsOpen(false); 
     } finally {
       setIsOpening(false);
     }
