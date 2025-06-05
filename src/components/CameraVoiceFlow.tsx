@@ -196,9 +196,30 @@ export const CameraVoiceFlow: React.FC<CameraVoiceFlowProps> = ({ webhookUrl, la
         body: formData,
       });
 
-      if (!response.ok) throw new Error(`Webhook error ${response.status}: ${response.statusText}`);
+      // Read the response body as text ONCE.
+      const responseText = await response.text();
+      console.log(`[CameraVoiceFlow] Webhook response. Status: ${response.status}, OK: ${response.ok}, Body:`, responseText);
+
+      if (!response.ok) {
+        // If response is not OK, throw an error with the response text.
+        console.error(`[CameraVoiceFlow] Webhook response not OK (${response.status}). Full response text logged above.`);
+        throw new Error(`Webhook-virhe ${response.status} (${response.statusText}). Palvelimen vastaus: ${responseText || '(tyhjä)'}`);
+      }
       
-      const analysisResult = await response.json();
+      // If response is OK, try to parse the text as JSON.
+      let analysisResult;
+      try {
+        if (!responseText) {
+          // Handle empty responseText even if response.ok was true
+          console.error('[CameraVoiceFlow] Webhook response was OK, but the response body was empty.');
+          throw new Error('Webhook-palvelu palautti tyhjän vastauksen.'); 
+        }
+        analysisResult = JSON.parse(responseText);
+      } catch (jsonParseError) {
+        console.error('[CameraVoiceFlow] Failed to parse webhook response as JSON. Raw response text logged above.', jsonParseError);
+        throw new Error('Webhook-palvelu palautti virheellistä dataa (JSON-jäsennys epäonnistui). Analyysia ei voitu käsitellä.');
+      }
+
       setAnalysisText(analysisResult.textResponse || analysisResult.text || 'Analyysi valmis');
       
       let rawAudioData = analysisResult.audioResponse || analysisResult.audio || '';
