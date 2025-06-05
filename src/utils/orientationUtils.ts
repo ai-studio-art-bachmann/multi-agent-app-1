@@ -5,7 +5,7 @@
 // Orientatsiooni tüübid
 export type Orientation = 'portrait' | 'landscape';
 
-// Laiendame MediaTrackCapabilities tüüpi zoom toetuse jaoks
+// Laiendame MediaTrackCapabilities ja MediaTrackConstraintSet tüüpe zoom toetuse jaoks
 declare global {
   interface MediaTrackCapabilities {
     zoom?: {
@@ -13,6 +13,10 @@ declare global {
       max: number;
       step: number;
     };
+  }
+  
+  interface MediaTrackConstraintSet {
+    zoom?: number;
   }
 }
 
@@ -107,7 +111,9 @@ export const setZoomLevel = (stream: MediaStream | null, zoomLevel: number): boo
     );
     
     // Seadistame zoom taseme
-    const constraints = { advanced: [{ zoom: clampedZoom }] };
+    const constraints: MediaTrackConstraints = {
+      advanced: [{ zoom: clampedZoom }]
+    };
     videoTrack.applyConstraints(constraints);
     
     console.log(`Zoom level set to ${clampedZoom}`);

@@ -3,6 +3,7 @@ import { VoiceButton } from '@/components/VoiceButton';
 import { Camera } from '@/components/Camera';
 import { PhotoVoiceCapture } from '@/components/PhotoVoiceCapture';
 import { FileUploadComponent } from '@/components/FileUploadComponent';
+import { CameraVoiceFlow } from '@/components/CameraVoiceFlow';
 import { TabSelector, TabType } from '@/components/TabSelector';
 import { Button } from '@/components/ui/button';
 import { getTranslations } from '@/utils/translations';
@@ -105,11 +106,11 @@ export const InteractionPanel: React.FC<InteractionPanelProps> = ({
             </>
           )}
           
-          {/* Camera tab */}
+          {/* Deprecated Camera tab - uses the simplified Camera.tsx */}
           {activeTab === 'camera' && (
             <Camera 
               language={language}
-              webhookUrl={webhookUrl}
+              // webhookUrl is not needed by the simplified Camera component
             />
           )}
           
@@ -118,6 +119,14 @@ export const InteractionPanel: React.FC<InteractionPanelProps> = ({
             <PhotoVoiceCapture
               language={language}
               webhookUrl={webhookUrl}
+            />
+          )}
+
+          {/* New CameraVoiceFlow tab */}
+          {activeTab === 'voiceFlow' && (
+            <CameraVoiceFlow 
+              language={language}
+              webhookUrl={webhookUrl} 
             />
           )}
           

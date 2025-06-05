@@ -177,4 +177,80 @@ self.addEventListener('sync', (event) => {
       })
     );
   }
+
+  if (event.tag === 'sync-inspections') {
+    console.log('Background sync: sync-inspections');
+    event.waitUntil(
+      handleInspectionSync()
+    );
+  }
 });
+
+// Handle inspection sync in background
+async function handleInspectionSync() {
+  try {
+    // Import idb-keyval dynamically
+    const { get, set, del, keys } = await import('https://cdn.skypack.dev/idb-keyval');
+    
+    // Get all offline inspections
+    const allKeys = await keys();
+    const offlineKeys = allKeys.filter(key => 
+      typeof key === 'string' && key.startsWith('offline-inspection-')
+    );
+    
+    if (offlineKeys.length === 0) {
+      console.log('No offline inspections to sync');
+      return;
+    }
+
+    let synced = 0;
+    let failed = 0;
+
+    // Try to sync each inspection
+    for (const key of offlineKeys) {
+      const inspection = await get(key);
+      if (!inspection) continue;
+
+      try {
+        // Try to sync with webhook
+        const formData = new FormData();
+        formData.append('file', inspection.blob, inspection.fileName);
+        formData.append('fileName', inspection.fileName);
+        formData.append('language', inspection.language);
+        formData.append('wantAudio', inspection.wantAudio.toString());
+
+        // Use the default webhook URL - in real app this should come from config
+        const webhookUrl = 'https://n8n.artbachmann.eu/webhook/c995af71-fd09-431d-ab51-05476d66d0ba';
+        
+        const response = await fetch(webhookUrl, {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (response.ok) {
+          // Success - remove from offline storage
+          await del(key);
+          synced++;
+          console.log(`Synced inspection: ${inspection.fileName}`);
+        } else {
+          failed++;
+          console.log(`Failed to sync inspection: ${inspection.fileName}`);
+        }
+      } catch (error) {
+        failed++;
+        console.log(`Error syncing inspection: ${inspection.fileName}`, error);
+      }
+    }
+
+    // Show notification about sync results
+    if (synced > 0) {
+      await self.registration.showNotification('Työkalu App', {
+        body: `${synced} kuvaa synkronoitu onnistuneesti${failed > 0 ? `, ${failed} epäonnistui` : ''}`,
+        icon: '/icons/maskable-192.png',
+        badge: '/icons/maskable-192.png'
+      });
+    }
+  } catch (error) {
+    console.error('Background sync failed:', error);
+  }
+}

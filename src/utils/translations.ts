@@ -1,4 +1,3 @@
-
 export interface Translations {
   // Header texts
   headerTitle: string;
@@ -47,6 +46,7 @@ export interface Translations {
   filesTab: string;
   cameraTab: string;
   photoVoiceTab: string;
+  voiceFlowTab: string;
 
   // Camera component
   startCamera: string;
@@ -55,6 +55,7 @@ export interface Translations {
   retakePhoto: string;
   sendPhoto: string;
   capturedPhoto: string;
+  capturedPhotoAlt: string;
   cameraPlaceholder: string;
   cameraError: string;
   cameraPermissionDenied: string;
@@ -66,6 +67,13 @@ export interface Translations {
   saveError: string;
   uploadError: string;
   uploading: string;
+  invalidWebhookUrl: string;
+  configureWebhook: string;
+  networkError: string;
+  photoAnalyzed: string;
+  uploadSuccess: string;
+  audioProcessingFailed: string;
+  missingPhotoOrName: string;
 
   // PhotoVoice component
   addVoiceComment: string;
@@ -89,6 +97,29 @@ export interface Translations {
   dictateFileName: string;
   stopDictating: string;
   processingName: string;
+  noSpeechDetected: string;
+  recognitionError: string;
+  voiceNamingNotAvailable: string;
+  noPhotoOrFilenameError: string;
+  
+  // Photo analysis and audio
+  analysisResult: string;
+  playAnalysis: string;
+  playingAnalysisAudio: string;
+  audioError: string;
+  audioPlayError: string;
+  analysisError: string;
+  analysisFailedMessage: string;
+  responseParseError: string;
+  invalidResponseFormat: string;
+  zoomInLabel: string;
+  zoomOutLabel: string;
+  zoomErrorTitle: string;
+  zoomErrorDescription: string;
+  switchToFrontCamera: string;
+  switchToBackCamera: string;
+  switchingCameraText: string;
+  zoomSlider: string;
 
   // File upload component
   selectFile: string;
@@ -99,6 +130,20 @@ export interface Translations {
   selectedFile: string;
   fileSent: string;
   fileSentSuccess: string;
+
+  // CameraVoiceFlow component
+  takingPhoto: string;
+  askingForFileName: string;
+  wantToHearAnalysis: string;
+  yesHearAnalysis: string;
+  noSkipAnalysis: string;
+  processingAnalysis: string;
+  savingToDatabase: string;
+  operationComplete: string;
+  operationFailed: string;
+  cameraVoiceFlowError: string;
+  offlineSavedForLater: string;
+  syncWhenOnline: string;
 }
 
 export const translations: Record<'fi' | 'et' | 'en', Translations> = {
@@ -137,6 +182,7 @@ export const translations: Record<'fi' | 'et' | 'en', Translations> = {
     filesTab: 'Tiedostot',
     cameraTab: 'Kamera',
     photoVoiceTab: 'Kuva+Ääni',
+    voiceFlowTab: 'ÄäniVirta',
     
     // Camera component
     startCamera: 'Käynnistä kamera',
@@ -145,6 +191,7 @@ export const translations: Record<'fi' | 'et' | 'en', Translations> = {
     retakePhoto: 'Ota uusi kuva',
     sendPhoto: 'Lähetä kuva',
     capturedPhoto: 'Otettu kuva',
+    capturedPhotoAlt: 'Otettu kuva',
     cameraPlaceholder: 'Paina käynnistääksesi kameran',
     cameraError: 'Kameravirhe',
     cameraPermissionDenied: 'Kameran käyttöoikeus evätty',
@@ -179,6 +226,29 @@ export const translations: Record<'fi' | 'et' | 'en', Translations> = {
     dictateFileName: 'Aloita nimen saneleminen',
     stopDictating: 'Lopeta nimen saneleminen',
     processingName: 'Käsitellään nimeä...',
+    noSpeechDetected: 'Puhetta ei havaittu',
+    recognitionError: 'Virhe puheen tunnistuksessa',
+    voiceNamingNotAvailable: 'Ääninimeäminen ei ole käytettävissä',
+    noPhotoOrFilenameError: 'Ei kuvaa tai tiedostonimeä',
+    
+    // Photo analysis and audio
+    analysisResult: 'Analyysin tulos',
+    playAnalysis: 'Toista analyysi',
+    playingAnalysisAudio: 'Toistetaan...',
+    audioError: 'Äänivirhe',
+    audioPlayError: 'Äänen toistaminen epäonnistui',
+    analysisError: 'Analyysivirhe',
+    analysisFailedMessage: 'Kuvan analyysi epäonnistui',
+    responseParseError: 'Vastauksen käsittelyvirhe',
+    invalidResponseFormat: 'Virheellinen vastausmuoto',
+    zoomInLabel: 'Lähennä',
+    zoomOutLabel: 'Loitonna',
+    zoomErrorTitle: 'Zoomausvirhe',
+    zoomErrorDescription: 'Zoomaustason asettaminen epäonnistui',
+    switchToFrontCamera: 'Vaihda etukameraan',
+    switchToBackCamera: 'Vaihda takakameraan',
+    switchingCameraText: 'Vaihdetaan kameraa...',
+    zoomSlider: 'Zoomaustaso',
 
     // File upload component
     selectFile: 'Valitse tiedosto',
@@ -188,7 +258,28 @@ export const translations: Record<'fi' | 'et' | 'en', Translations> = {
     orClickToUpload: 'tai klikkaa valitaksesi',
     selectedFile: 'Valittu tiedosto',
     fileSent: 'Tiedosto lähetetty',
-    fileSentSuccess: 'Tiedosto lähetetty onnistuneesti'
+    fileSentSuccess: 'Tiedosto lähetetty onnistuneesti',
+    invalidWebhookUrl: 'Virheellinen webhook-osoite',
+    configureWebhook: 'Määritä webhook-osoite',
+    networkError: 'Verkkovirhe',
+    photoAnalyzed: 'Kuva analysoitu',
+    uploadSuccess: 'Lähetys onnistui',
+    audioProcessingFailed: 'Äänen käsittely epäonnistui',
+    missingPhotoOrName: 'Kuva tai tiedostonimi puuttuu',
+
+    // CameraVoiceFlow component
+    takingPhoto: 'Otan kuvan...',
+    askingForFileName: 'Anna tiedoston nimi',
+    wantToHearAnalysis: 'Haluatko kuulla analyysin nyt?',
+    yesHearAnalysis: 'Kyllä',
+    noSkipAnalysis: 'Ei',
+    processingAnalysis: 'Käsittelen analyysiä...',
+    savingToDatabase: 'Tallennan tietokantaan...',
+    operationComplete: 'Toiminto valmis!',
+    operationFailed: 'Toiminto epäonnistui',
+    cameraVoiceFlowError: 'Kameran ääniohjaus virhe',
+    offlineSavedForLater: 'Tallennettu offline-tilaan',
+    syncWhenOnline: 'Synkronoidaan kun verkko palaa'
   },
   et: {
     headerTitle: 'Nutikas abi ehitusplatsile!',
@@ -222,9 +313,10 @@ export const translations: Record<'fi' | 'et' | 'en', Translations> = {
     
     // Tab navigation
     audioTab: 'Hääl',
-    filesTab: 'Tiedostot',
+    filesTab: 'Failid',
     cameraTab: 'Kaamera',
     photoVoiceTab: 'Pilt+Hääl',
+    voiceFlowTab: 'Häälevoog',
     
     // Camera component
     startCamera: 'Käivita kaamera',
@@ -233,6 +325,7 @@ export const translations: Record<'fi' | 'et' | 'en', Translations> = {
     retakePhoto: 'Tee uus pilt',
     sendPhoto: 'Saada pilt',
     capturedPhoto: 'Tehtud pilt',
+    capturedPhotoAlt: 'Tehtud pilt',
     cameraPlaceholder: 'Vajuta kaamera käivitamiseks',
     cameraError: 'Kaamera viga',
     cameraPermissionDenied: 'Kaamera kasutamise õigus keelatud',
@@ -260,13 +353,36 @@ export const translations: Record<'fi' | 'et' | 'en', Translations> = {
     uploadButtonLabel: 'Laadi üles',
     
     // Camera component - File Naming by Voice
-    giveFileNameByVoice: 'Sisesta failinimi häälega',
-    tryNamingAgain: 'Proovi uuesti nimetamist',
-    fileNameRecognizedAs: 'Failinimi tuvastatud:',
+    giveFileNameByVoice: 'Nimeta fail häälega',
+    tryNamingAgain: 'Proovi uuesti nimetada',
+    fileNameRecognizedAs: 'Failinimi tuvastati:',
     photoWillBeSentAs: 'Foto saadetakse nimega:',
-    dictateFileName: 'Alusta nime dikteerimist',
-    stopDictating: 'Lõpeta nime dikteerimine',
+    dictateFileName: 'Alusta failinime dikteerimist',
+    stopDictating: 'Lõpeta dikteerimine',
     processingName: 'Töötlen nime...',
+    noSpeechDetected: 'Kõnet ei tuvastatud',
+    recognitionError: 'Kõne tuvastamise viga',
+    voiceNamingNotAvailable: 'Hääle nimetamine pole saadaval',
+    noPhotoOrFilenameError: 'Foto või failinimi puudub',
+    
+    // Photo analysis and audio
+    analysisResult: 'Analüüsi tulemus',
+    playAnalysis: 'Mängi analüüsi',
+    playingAnalysisAudio: 'Mängin...',
+    audioError: 'Heliviga',
+    audioPlayError: 'Heli esitamine ebaõnnestus',
+    analysisError: 'Analüüsi viga',
+    analysisFailedMessage: 'Pildi analüüs ebaõnnestus',
+    responseParseError: 'Vastuse töötlemise viga',
+    invalidResponseFormat: 'Vigane vastuse formaat',
+    zoomInLabel: 'Suurenda',
+    zoomOutLabel: 'Vähenda',
+    zoomErrorTitle: 'Suumimise viga',
+    zoomErrorDescription: 'Suumi taseme seadistamine ebaõnnestus',
+    switchToFrontCamera: 'Lülitu eesmisele kaamerale',
+    switchToBackCamera: 'Lülitu tagumisele kaamerale',
+    switchingCameraText: 'Kaamerate vahetamine...',
+    zoomSlider: 'Suumi kontroll',
 
     // File upload component
     selectFile: 'Vali fail',
@@ -276,7 +392,28 @@ export const translations: Record<'fi' | 'et' | 'en', Translations> = {
     orClickToUpload: 'või klõpsa valimiseks',
     selectedFile: 'Valitud fail',
     fileSent: 'Fail saadetud',
-    fileSentSuccess: 'Fail edukalt saadetud'
+    fileSentSuccess: 'Fail edukalt saadetud',
+    invalidWebhookUrl: 'Vigane webhook URL',
+    configureWebhook: 'Seadista webhook',
+    networkError: 'Võrgu viga',
+    photoAnalyzed: 'Foto analüüsitud',
+    uploadSuccess: 'Üleslaadimine õnnestus',
+    audioProcessingFailed: 'Heli töötlemine ebaõnnestus',
+    missingPhotoOrName: 'Foto või failinimi puudub',
+
+    // CameraVoiceFlow component
+    takingPhoto: 'Teen pilti...',
+    askingForFileName: 'Anna faili nimi',
+    wantToHearAnalysis: 'Kas tahad kuulda analüüsi nüüd?',
+    yesHearAnalysis: 'Jah',
+    noSkipAnalysis: 'Ei',
+    processingAnalysis: 'Töötlen analüüsi...',
+    savingToDatabase: 'Salvendan andmebaasi...',
+    operationComplete: 'Toiming lõpetatud!',
+    operationFailed: 'Toiming ebaõnnestus',
+    cameraVoiceFlowError: 'Kaamera häälkomandite viga',
+    offlineSavedForLater: 'Salvestatud offline-režiimis',
+    syncWhenOnline: 'Sünkroniseeritakse kui ühendus taastub'
   },
   en: {
     headerTitle: 'Smart help for construction sites!',
@@ -321,6 +458,7 @@ export const translations: Record<'fi' | 'et' | 'en', Translations> = {
     retakePhoto: 'Retake photo',
     sendPhoto: 'Send photo',
     capturedPhoto: 'Captured photo',
+    capturedPhotoAlt: 'Captured photo',
     cameraPlaceholder: 'Press to start camera',
     cameraError: 'Camera error',
     cameraPermissionDenied: 'Camera permission denied',
@@ -355,6 +493,29 @@ export const translations: Record<'fi' | 'et' | 'en', Translations> = {
     dictateFileName: 'Start dictating name',
     stopDictating: 'Stop dictating name',
     processingName: 'Processing name...',
+    noSpeechDetected: 'No speech detected',
+    recognitionError: 'Speech recognition error',
+    voiceNamingNotAvailable: 'Voice naming not available',
+    noPhotoOrFilenameError: 'No photo or filename',
+    
+    // Photo analysis and audio
+    analysisResult: 'Analysis Result',
+    playAnalysis: 'Play Analysis',
+    playingAnalysisAudio: 'Playing...',
+    audioError: 'Audio Error',
+    audioPlayError: 'Failed to play audio',
+    analysisError: 'Analysis Error',
+    analysisFailedMessage: 'Image analysis failed',
+    responseParseError: 'Response Processing Error',
+    invalidResponseFormat: 'Invalid response format',
+    zoomInLabel: 'Zoom In',
+    zoomOutLabel: 'Zoom Out',
+    zoomErrorTitle: 'Zoom Error',
+    zoomErrorDescription: 'Failed to set zoom level',
+    switchToFrontCamera: 'Switch to front camera',
+    switchToBackCamera: 'Switch to back camera',
+    switchingCameraText: 'Switching camera...',
+    zoomSlider: 'Zoom control',
 
     // File upload component
     selectFile: 'Select file',
@@ -364,7 +525,28 @@ export const translations: Record<'fi' | 'et' | 'en', Translations> = {
     orClickToUpload: 'or click to upload',
     selectedFile: 'Selected file',
     fileSent: 'File sent',
-    fileSentSuccess: 'File sent successfully'
+    fileSentSuccess: 'File sent successfully',
+    invalidWebhookUrl: 'Invalid webhook URL',
+    configureWebhook: 'Configure webhook',
+    networkError: 'Network error',
+    photoAnalyzed: 'Photo analyzed',
+    uploadSuccess: 'Upload successful',
+    audioProcessingFailed: 'Audio processing failed',
+    missingPhotoOrName: 'Missing photo or filename',
+
+    // CameraVoiceFlow component
+    takingPhoto: 'Taking photo...',
+    askingForFileName: 'Give file name',
+    wantToHearAnalysis: 'Do you want to hear the analysis now?',
+    yesHearAnalysis: 'Yes',
+    noSkipAnalysis: 'No',
+    processingAnalysis: 'Processing analysis...',
+    savingToDatabase: 'Saving to database...',
+    operationComplete: 'Operation complete!',
+    operationFailed: 'Operation failed',
+    cameraVoiceFlowError: 'Camera voice flow error',
+    offlineSavedForLater: 'Saved offline for later',
+    syncWhenOnline: 'Will sync when online'
   }
 };
 
