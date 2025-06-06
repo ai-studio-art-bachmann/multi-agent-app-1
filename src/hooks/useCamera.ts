@@ -49,37 +49,47 @@ export const useCamera = (): CameraHookReturn => {
 
       if (videoElement) {
         videoElement.srcObject = stream;
+        videoElement.muted = true;
+        videoElement.playsInline = true;
         
         await new Promise<void>((resolve, reject) => {
           const timer = setTimeout(() => {
-            reject(new Error('Kameran käynnistys aikakatkaistiin (5s).'));
-          }, 5000);
+            cleanupEvents();
+            reject(new Error('Kameran käynnistys aikakatkaistiin (10s).'));
+          }, 10000);
 
           const onPlaying = () => {
-            clearTimeout(timer);
-            videoElement.removeEventListener('playing', onPlaying);
-            videoElement.removeEventListener('error', onVideoError);
-            console.log('[useCamera] Video stream is now playing.');
-            resolve();
+            if (videoElement.videoWidth > 0) {
+              console.log('[useCamera] Video stream confirmed playing with dimensions.');
+              cleanupEvents();
+              resolve();
+            } else {
+              console.warn('[useCamera] "playing" event fired but videoWidth is 0. Waiting for dimensions...');
+            }
           };
 
           const onVideoError = (e: Event) => {
-            clearTimeout(timer);
-            videoElement.removeEventListener('playing', onPlaying);
-            videoElement.removeEventListener('error', onVideoError);
+            cleanupEvents();
             console.error('[useCamera] Video element error:', e);
             reject(new Error('Videoelementin virhe.'));
+          };
+          
+          const onCanPlay = () => {
+            videoElement.play().catch(err => {
+              console.warn(`[useCamera] Play command was rejected, but this is often recoverable. Error: ${err.message}`);
+              // Relying on the 'playing' event to resolve.
+            });
+          };
+
+          const cleanupEvents = () => {
+            videoElement.removeEventListener('playing', onPlaying);
+            videoElement.removeEventListener('error', onVideoError);
+            videoElement.removeEventListener('canplay', onCanPlay);
           };
 
           videoElement.addEventListener('playing', onPlaying);
           videoElement.addEventListener('error', onVideoError);
-
-          // Trigger play. This is necessary for some browsers.
-          videoElement.play().catch(error => {
-              // The play() promise can be rejected if the user hasn't interacted with the page yet.
-              // The 'playing' event should still fire if it succeeds, so we can often ignore this rejection.
-              console.warn(`[useCamera] video.play() was rejected, but this is often recoverable. Error: ${error.message}`);
-          });
+          videoElement.addEventListener('canplay', onCanPlay);
         });
       }
       

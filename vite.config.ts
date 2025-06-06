@@ -9,6 +9,12 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
+    proxy: {
+      '/webhook': {
+        target: 'https://n8n.artbachmann.eu',
+        changeOrigin: true,
+      }
+    }
   },
   plugins: [
     react(),

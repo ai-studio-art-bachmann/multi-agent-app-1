@@ -1,12 +1,20 @@
-const CACHE_NAME = 'tyokalu-app-v5';  // Increment version to force cache refresh
-const STATIC_CACHE_URLS = [
+const CACHE_VERSION = 'v7'; // Updated version
+const CACHE_NAME = `tyokalu-pwa-cache-${CACHE_VERSION}`;
+const urlsToCache = [
   '/',
   '/index.html',
   '/manifest.json',
-  '/female-greeting.mp3',
-  '/icons/favicon.ico',
+  '/favicon.ico',
   '/icons/maskable-192.png',
-  '/icons/maskable-512.png'
+  '/icons/maskable-512.png',
+];
+
+// Define assets that should always be fetched from the network and not cached,
+// especially during development.
+const EXCLUDED_URLS = [
+  '/@vite/client',
+  '/@react-refresh',
+  'node_modules'
 ];
 
 // Define regex patterns for assets that should NOT be cached
@@ -26,7 +34,7 @@ self.addEventListener('install', (event) => {
     caches.open(CACHE_NAME)
       .then((cache) => {
         console.log('Caching static resources');
-        return cache.addAll(STATIC_CACHE_URLS);
+        return cache.addAll(urlsToCache);
       })
       .then(() => {
         console.log('Static resources cached');
@@ -72,8 +80,16 @@ self.addEventListener('fetch', (event) => {
     return;
   }
   
-  // Check if this is a resource we should never cache
   const url = new URL(event.request.url);
+  
+  // Exclude specific URLs from being handled by the service worker,
+  // particularly development-related scripts.
+  if (EXCLUDED_URLS.some(excluded => url.pathname.includes(excluded))) {
+    // console.log(`[SW] Bypassing cache for development URL: ${url.pathname}`);
+    return; // Let the browser handle it
+  }
+  
+  // Check if this is a resource we should never cache
   const shouldNotCache = NEVER_CACHE_PATTERNS.some(pattern => pattern.test(url.pathname));
   
   // For JavaScript, CSS, and assets files, always go to network first
@@ -110,8 +126,8 @@ self.addEventListener('fetch', (event) => {
             // Clone the response since it's a stream
             const responseToCache = response.clone();
 
-            // Only cache static assets in the STATIC_CACHE_URLS list
-            if (STATIC_CACHE_URLS.includes(url.pathname)) {
+            // Only cache static assets in the urlsToCache list
+            if (urlsToCache.includes(url.pathname)) {
               caches.open(CACHE_NAME)
                 .then((cache) => {
                   cache.put(event.request, responseToCache);

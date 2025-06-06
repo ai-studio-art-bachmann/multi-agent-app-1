@@ -1,47 +1,67 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { VoiceButton } from '@/components/VoiceButton';
 import { FileUploadComponent } from '@/components/FileUploadComponent';
 import { VoiceAssistedCamera } from '@/components/VoiceAssistedCamera';
 import { TabSelector, TabType } from '@/components/TabSelector';
 import { Button } from '@/components/ui/button';
-import { getTranslations } from '@/utils/translations';
-import { VoiceState } from '@/types/voice';
-import { uploadFile } from '@/services/uploadService';
 import { useToast } from '@/components/ui/use-toast';
+import { uploadFile } from '@/services/uploadService';
+import { AppContext } from '@/context/AppContext';
+import { useConversation } from '@/hooks/useConversation';
+import { useMicrophone } from '@/hooks/useMicrophone';
 
-interface InteractionPanelProps {
-  voiceState: VoiceState;
-  onVoiceInteraction: () => void;
-  isVoiceDisabled: boolean;
-  isWaitingForClick: boolean;
-  language: 'fi' | 'et' | 'en';
-  webhookUrl: string;
-  onReset: () => void;
-  hasMessages: boolean;
-}
-
-export const InteractionPanel: React.FC<InteractionPanelProps> = ({
-  voiceState,
-  onVoiceInteraction,
-  isVoiceDisabled,
-  isWaitingForClick,
-  language,
-  webhookUrl,
-  onReset,
-  hasMessages
-}) => {
+export const InteractionPanel: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('audio');
-  const t = getTranslations(language);
   const { toast } = useToast();
+
+  const context = useContext(AppContext);
+  if (!context) throw new Error("InteractionPanel must be used within an AppProvider");
+  const { language, webhookUrl, messages } = context;
+
+  const { sendAudio, t } = useConversation();
+  const microphone = useMicrophone();
+  const [isRecording, setIsRecording] = useState(false);
+
 
   const handleTabChange = (tab: TabType) => {
     console.log(`Tab changed to: ${tab}`);
+    // Stop recording if switching tabs
+    if (isRecording) {
+      microphone.stopRecording();
+      setIsRecording(false);
+    }
     setActiveTab(tab);
   };
-
-  // Photo handling is now integrated in the Camera component
+  
+  const handleVoiceInteraction = async () => {
+    if (!isRecording) {
+      try {
+        await microphone.startRecording();
+        setIsRecording(true);
+        toast({ title: t.listening, description: t.clickToStop });
+      } catch (error) {
+        toast({ title: t.voiceError, description: (error as Error).message, variant: 'destructive' });
+      }
+    } else {
+      try {
+        const audioBlob = await microphone.stopRecording();
+        setIsRecording(false);
+        if (audioBlob.size > 100) { // Simple validation for non-empty recording
+          sendAudio(audioBlob);
+        } else {
+          toast({ title: t.recordingFailed, description: t.tryAgain, variant: 'destructive' });
+        }
+      } catch (error) {
+        toast({ title: t.voiceError, description: (error as Error).message, variant: 'destructive' });
+      }
+    }
+  };
 
   const handleFileUpload = async (file: File) => {
+    if (!webhookUrl) {
+      toast({ title: "Webhook URL not configured", variant: "destructive" });
+      return;
+    }
     try {
       const success = await uploadFile(file, webhookUrl);
       if (success) {
@@ -75,47 +95,27 @@ export const InteractionPanel: React.FC<InteractionPanelProps> = ({
     <div className="bg-white/95 backdrop-blur-sm border border-gray-200 rounded-2xl shadow-lg mt-2 mb-4">
       <TabSelector 
         currentTab={activeTab} 
-        onTabChange={handleTabChange} 
-        language={language} 
+        onTabChange={handleTabChange}
       />
       
       <div className="p-2 sm:p-3">
         <div className="flex flex-col items-center space-y-2">
           {activeTab === 'audio' && (
-            <>
-              <VoiceButton
-                voiceState={voiceState}
-                onPress={onVoiceInteraction}
-                disabled={isVoiceDisabled}
-                isWaitingForClick={isWaitingForClick}
-                language={language}
-              />
-              
-              {hasMessages && (
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={onReset}
-                  className="text-xs px-4 py-2 rounded-full border-orange-200 text-orange-600 hover:bg-orange-50 transition-colors"
-                >
-                  {t.resetConversation}
-                </Button>
-              )}
-            </>
+            <VoiceButton
+              onClick={handleVoiceInteraction}
+              isRecording={isRecording}
+              language={language}
+            />
           )}
           
           {/* Voice-assisted camera - unified solution */}
           {activeTab === 'voiceCamera' && (
-            <VoiceAssistedCamera
-              language={language}
-              webhookUrl={webhookUrl}
-            />
+            <VoiceAssistedCamera />
           )}
           
           {/* Files tab */}
           {activeTab === 'files' && (
             <FileUploadComponent 
-              language={language}
               onFileUpload={handleFileUpload}
             />
           )}

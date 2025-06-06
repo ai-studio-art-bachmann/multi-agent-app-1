@@ -1,20 +1,22 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import { cn } from '@/lib/utils';
 import { getTranslations } from '@/utils/translations';
+import { AppContext } from '@/context/AppContext';
 
 export type TabType = 'audio' | 'files' | 'voiceCamera';
 
 interface TabSelectorProps {
   currentTab: TabType;
   onTabChange: (tab: TabType) => void;
-  language: 'fi' | 'et' | 'en';
 }
 
 export const TabSelector: React.FC<TabSelectorProps> = ({
   currentTab,
   onTabChange,
-  language
 }) => {
+  const context = useContext(AppContext);
+  if (!context) throw new Error("TabSelector must be used within an AppProvider");
+  const { language } = context;
   const t = getTranslations(language);
   
   const tabs = [

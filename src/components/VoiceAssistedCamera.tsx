@@ -1,18 +1,14 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useRef, useContext } from 'react';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/use-toast';
 import { useCamera } from '@/hooks/useCamera';
 import { useSpeech } from '@/hooks/useSpeech';
+import { useConversation } from '@/hooks/useConversation';
 import { offlineService, OfflineInspection } from '@/services/offlineService';
 import { supabaseService } from '@/services/supabaseService';
-import { getTranslations } from '@/utils/translations';
 import { Camera, Mic, Volume2, Upload, Wifi, WifiOff, PlayCircle, RotateCcw } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
-
-interface VoiceAssistedCameraProps {
-  webhookUrl: string;
-  language: 'fi' | 'et' | 'en';
-}
+import { AppContext } from '@/context/AppContext';
 
 type FlowState = 
   | 'idle'
@@ -28,23 +24,21 @@ type FlowState =
   | 'complete'
   | 'error';
 
-export const VoiceAssistedCamera: React.FC<VoiceAssistedCameraProps> = ({ webhookUrl, language }) => {
+export const VoiceAssistedCamera: React.FC = () => {
   const [flowState, setFlowState] = useState<FlowState>('idle');
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string>('');
-  const [wantAudio, setWantAudio] = useState<boolean>(false);
-  const [analysisText, setAnalysisText] = useState<string>('');
-  const [analysisAudio, setAnalysisAudio] = useState<string>('');
   const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
   const [statusMessage, setStatusMessage] = useState<string>('');
-  const [showPlayButtonForAnalysis, setShowPlayButtonForAnalysis] = useState(false);
-  const [audioToPlayManually, setAudioToPlayManually] = useState<string | null>(null);
+  
+  const context = useContext(AppContext);
+  if (!context) throw new Error("VoiceAssistedCamera must be used within AppProvider");
+  const { language, webhookUrl } = context;
 
   const camera = useCamera();
   const speech = useSpeech();
-  const t = getTranslations(language);
+  const { addMessage, t } = useConversation();
   
-  // Audio element ref for manual audio playback
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // This effect orchestrates the camera opening sequence
@@ -60,17 +54,12 @@ export const VoiceAssistedCamera: React.FC<VoiceAssistedCameraProps> = ({ webhoo
           setFlowState('error');
           const errorMessage = error instanceof Error ? error.message : 'Kameran käynnistys epäonnistui';
           setStatusMessage(errorMessage);
-          toast({
-            title: 'Kameravirhe',
-            description: errorMessage,
-            variant: 'destructive'
-          });
           await speech.speak('Kameran käynnistys epäonnistui', language);
         }
       };
       openAndProceed();
     }
-  }, [flowState, camera, language, speech, t, toast]);
+  }, [flowState, camera, language, speech, t]);
 
   // Monitor online status
   useEffect(() => {
@@ -88,59 +77,17 @@ export const VoiceAssistedCamera: React.FC<VoiceAssistedCameraProps> = ({ webhoo
 
   // Process voice input to valid filename
   const processVoiceToFileName = useCallback((voiceInput: string): string => {
-    const timestamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, ' ').replace(/-/g, '.');
-    // Remove characters that are invalid in most filesystems
+    // NOTE: This implementation uses the user's spoken filename as precisely as possible.
+    // It only removes characters that are invalid in all common filesystems.
+    // If the user provides the same name for multiple photos, the previous file might be overwritten.
     const cleanInput = voiceInput
       .trim()
-      .replace(/[\\/:*?"<>|]/g, ''); // Remove invalid filename characters
+      // Remove characters that are invalid in most filesystems.
+      .replace(/[\\/:*?"<>|]/g, ''); 
 
-    // Add timestamp for uniqueness, then the extension
-    return cleanInput ? `${cleanInput} ${timestamp}.jpg` : `kuva_${timestamp}.jpg`;
+    // Use a generic, timestamped name only if the input is empty after cleaning.
+    return cleanInput ? `${cleanInput}.jpg` : `valokuva_${new Date().getTime()}.jpg`;
   }, []);
-
-  // Audio playback with fallback
-  const playAudioWithFallback = useCallback(async (audioDataUri: string, isManual: boolean = false): Promise<void> => {
-    if (!audioDataUri) {
-      console.warn('[VoiceAssistedCamera] No audio data provided for playback');
-      return;
-    }
-
-    try {
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current = null;
-      }
-
-      const audio = new Audio(audioDataUri);
-      audioRef.current = audio;
-
-      await new Promise<void>((resolve, reject) => {
-        audio.onended = () => resolve();
-        audio.onerror = (e) => {
-          console.error('[VoiceAssistedCamera] Audio playback error:', e);
-          reject(new Error('Audio playback failed'));
-        };
-        audio.oncanplaythrough = () => {
-          audio.play().catch(reject);
-        };
-      });
-
-      if (isManual) {
-        setShowPlayButtonForAnalysis(false);
-        setAudioToPlayManually(null);
-      }
-    } catch (error) {
-      console.warn('[VoiceAssistedCamera] Audio playback failed, using speech synthesis fallback');
-      if (analysisText) {
-        await speech.speak(analysisText, language);
-      }
-      
-      if (isManual) {
-        setShowPlayButtonForAnalysis(false);
-        setAudioToPlayManually(null);
-      }
-    }
-  }, [analysisText, speech, language]);
 
   // Start the voice-assisted camera workflow
   const startVoiceAssistedFlow = useCallback(async () => {
@@ -186,8 +133,6 @@ export const VoiceAssistedCamera: React.FC<VoiceAssistedCameraProps> = ({ webhoo
       const wantsAudio = analysisPreference.toLowerCase().includes('kyllä') || 
                         analysisPreference.toLowerCase().includes('jah') ||
                         analysisPreference.toLowerCase().includes('yes');
-      
-      setWantAudio(wantsAudio);
       wantAudioForOffline = wantsAudio;
 
       // Step 4: Process analysis
@@ -200,6 +145,10 @@ export const VoiceAssistedCamera: React.FC<VoiceAssistedCameraProps> = ({ webhoo
         throw new Error('offline_mode');
       }
       
+      if (!webhookUrl) {
+        throw new Error('Webhook URL is not configured.');
+      }
+
       // Send to n8n webhook
       const formData = new FormData();
       formData.append('file', photoBlob, processedFileName);
@@ -212,55 +161,65 @@ export const VoiceAssistedCamera: React.FC<VoiceAssistedCameraProps> = ({ webhoo
         body: formData,
       });
 
-      const responseText = await response.text();
-      console.log(`[VoiceAssistedCamera] Webhook response:`, { status: response.status, ok: response.ok, body: responseText });
+      console.log(`[VoiceAssistedCamera] Webhook response received. Status: ${response.status}, Content-Type: ${response.headers.get('Content-Type')}`);
 
       if (!response.ok) {
-        throw new Error(`Webhook-virhe ${response.status}: ${responseText}`);
+        const errorText = await response.text();
+        throw new Error(`Webhook-virhe ${response.status}: ${errorText}`);
       }
       
-      let analysisResult;
-      try {
-        analysisResult = JSON.parse(responseText);
-      } catch (jsonError) {
-        throw new Error('Webhook palautti virheellistä dataa');
-      }
+      const contentType = response.headers.get('Content-Type');
+      let textResponse = '';
+      let audioBase64 = '';
+      let audioFormat = 'mp3';
 
-      setAnalysisText(analysisResult.textResponse || analysisResult.text || 'Analyysi valmis');
-      
-      // Handle audio response
-      let rawAudioData = analysisResult.audioResponse || analysisResult.audio || '';
-      const audioFormat = analysisResult.audioFormat || 'mp3';
-      let playableAudioDataUri = '';
+      if (contentType && contentType.includes('application/json')) {
+        const responseText = await response.text();
+        if (responseText) {
+            try {
+                const responseData = JSON.parse(responseText);
+                console.log('[VoiceAssistedCamera] Full JSON response from n8n:', responseData);
 
-      if (rawAudioData) {
-        if (rawAudioData.startsWith('//')) {
-          rawAudioData = rawAudioData.substring(2);
-        }
+                textResponse = responseData.textResponse || responseData.text || '';
+                audioBase64 = responseData.audioResponse || '';
+                audioFormat = responseData.audioFormat || 'mp3';
 
-        if (rawAudioData && !rawAudioData.startsWith('data:')) {
-          playableAudioDataUri = `data:audio/${audioFormat};base64,${rawAudioData}`;
-        } else if (rawAudioData) {
-          playableAudioDataUri = rawAudioData;
-        }
-      }
-      
-      setAnalysisAudio(playableAudioDataUri);
-
-      // Step 5: Play or skip analysis
-      if (wantsAudio && playableAudioDataUri) {
-        setFlowState('playing_analysis');
-        setStatusMessage('Toistetaan analyysin ääni...');
-        await playAudioWithFallback(playableAudioDataUri);
-      } else if (wantsAudio && !playableAudioDataUri) {
-        await speech.speak('Analyysi valmis, mutta äänivastetta ei saatu.', language);
-        // Offer manual play option
-        if (analysisText) {
-          setAudioToPlayManually(analysisText);
-          setShowPlayButtonForAnalysis(true);
+            } catch (e) {
+                console.error('[VoiceAssistedCamera] Failed to parse JSON:', e);
+                textResponse = 'Vastaus saatiin, mutta sen käsittely epäonnistui.';
+            }
+        } else {
+            console.warn('[VoiceAssistedCamera] Received JSON content-type but empty response body.');
+            textResponse = t.photoAnalyzed;
         }
       } else {
-        await speech.speak('Analyysi tallennettu ilman äänitoistoa.', language);
+        console.warn(`[VoiceAssistedCamera] Unexpected Content-Type: ${contentType}. Treating as text.`);
+        textResponse = await response.text();
+      }
+
+      if (audioBase64 && audioBase64.length > 100) {
+        // Poista mahdollinen alun //
+        const cleanAudio = audioBase64.startsWith('//') ? audioBase64.slice(2) : audioBase64;
+        const audioDataUri = `data:audio/${audioFormat};base64,${cleanAudio}`;
+        // Toista ääni
+        await playAudioWithFallback(audioDataUri);
+        // Lisää analyysi keskusteluun
+        addMessage({
+          id: uuidv4(),
+          sender: 'ai',
+          text: textResponse,
+          audio: audioDataUri,
+          timestamp: new Date().toISOString(),
+        });
+      } else {
+        // Ei audioa, fallback: puhu teksti
+        await speech.speak(textResponse || 'Ei analyysiä', language);
+        addMessage({
+          id: uuidv4(),
+          sender: 'ai',
+          text: textResponse,
+          timestamp: new Date().toISOString(),
+        });
       }
 
       // Step 6: Save to database
@@ -274,8 +233,8 @@ export const VoiceAssistedCamera: React.FC<VoiceAssistedCameraProps> = ({ webhoo
       
       const inspectionRecord = {
         fileUrl: fileUploadResult.url,
-        text: analysisResult.textResponse || analysisResult.text || '',
-        audioUrl: playableAudioDataUri,
+        text: textResponse,
+        audioUrl: audioBase64,
         fileName: processedFileName,
         language,
       };
@@ -288,18 +247,15 @@ export const VoiceAssistedCamera: React.FC<VoiceAssistedCameraProps> = ({ webhoo
       // Success!
       setFlowState('complete');
       setStatusMessage('Toiminto valmis!');
-      await speech.speak('Kuva analysoitu ja tallennettu onnistuneesti!', language);
-
       toast({
         title: 'Onnistui!',
-        description: 'Kuva analysoitu ja tallennettu onnistuneesti',
-        variant: 'default'
+        description: 'Tiedot tallennettu onnistuneesti',
       });
 
     } catch (error) {
       const isOfflineError = error instanceof Error && error.message === 'offline_mode';
       
-      if (isOfflineError && photoBlobForOffline && fileNameForOffline) {
+      if (isOfflineError && photoBlobForOffline && fileNameForOffline && wantAudioForOffline) {
         await handleOfflineStorage(photoBlobForOffline, fileNameForOffline, wantAudioForOffline);
       } else {
         console.error('Error in voice-assisted camera flow:', error);
@@ -307,20 +263,12 @@ export const VoiceAssistedCamera: React.FC<VoiceAssistedCameraProps> = ({ webhoo
         const errorMessage = error instanceof Error ? error.message : 'Tuntematon virhe';
         setStatusMessage('Toiminto epäonnistui: ' + errorMessage);
         
-        toast({ 
-          title: 'Virhe', 
-          description: errorMessage, 
-          variant: 'destructive' 
-        });
-        
         await speech.speak('Toiminto epäonnistui', language);
       }
-    } finally {
-      camera.close();
     }
   }, [
     camera, speech, language, t, processVoiceToFileName, webhookUrl, 
-    playAudioWithFallback, supabaseService, analysisText
+    addMessage, supabaseService
   ]);
 
   // Handle offline storage
@@ -371,18 +319,7 @@ export const VoiceAssistedCamera: React.FC<VoiceAssistedCameraProps> = ({ webhoo
     setFlowState('idle');
     setCapturedImage(null);
     setFileName('');
-    setWantAudio(false);
-    setAnalysisText('');
-    setAnalysisAudio('');
     setStatusMessage('');
-    setShowPlayButtonForAnalysis(false);
-    setAudioToPlayManually(null);
-    
-    // Stop audio if playing
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current = null;
-    }
     
     camera.close();
     
@@ -490,28 +427,6 @@ export const VoiceAssistedCamera: React.FC<VoiceAssistedCameraProps> = ({ webhoo
               Vahvista nimi
             </Button>
           </form>
-        </div>
-      )}
-
-      {/* Manual play button for analysis audio */}
-      {showPlayButtonForAnalysis && audioToPlayManually && (
-        <div className="mb-4">
-          <Button
-            onClick={() => {
-              if (analysisAudio) {
-                playAudioWithFallback(analysisAudio, true);
-              } else {
-                speech.speak(audioToPlayManually, language);
-                setShowPlayButtonForAnalysis(false);
-                setAudioToPlayManually(null);
-              }
-            }}
-            className="w-full bg-green-500 hover:bg-green-600 text-white font-medium py-3 rounded-full shadow-lg"
-            size="lg"
-          >
-            <PlayCircle className="w-5 h-5 mr-2" />
-            Kuuntele analyysi
-          </Button>
         </div>
       )}
 

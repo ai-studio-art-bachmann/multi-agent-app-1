@@ -1,203 +1,83 @@
-
-import { useCallback } from 'react';
-import { ConversationConfig } from '@/types/voice';
+import { useCallback, useContext } from 'react';
 import { useMicrophone } from './useMicrophone';
 import { useAudioPlayer } from './useAudioPlayer';
 import { useConversationState } from './useConversationState';
-import { toast } from '@/hooks/use-toast';
-import { MessageManager } from '@/utils/messages';
+import { toast } from '@/components/ui/use-toast';
+import { Message, MessageManager } from '@/utils/messages';
 import { WebhookService } from '@/services/webhookService';
-import { getTranslations } from '@/utils/translations';
+import { getTranslations, Translations } from '@/utils/translations';
+import { AppContext } from '@/context/AppContext';
 
-export const useConversation = (config: ConversationConfig) => {
-  const state = useConversationState();
-  const microphone = useMicrophone();
+export const useConversation = () => {
+  const context = useContext(AppContext);
+  if (!context) {
+    throw new Error('useConversation must be used within an AppProvider');
+  }
+  const { language, messages, setMessages, webhookUrl } = context;
+
   const audioPlayer = useAudioPlayer();
-  const t = getTranslations(config.language);
-  
-  const messageManager = new MessageManager();
-  const webhookService = new WebhookService();
+  const t = getTranslations(language);
 
-  const addSystemMessage = useCallback((content: string) => {
-    const message = messageManager.addSystemMessage(content);
-    state.addMessage(message);
-  }, [state]);
+  const addMessage = useCallback((message: Omit<Message, 'id' | 'timestamp'>) => {
+    const messageManager = new MessageManager(messages);
+    const newMessage = messageManager.addMessage(message);
+    setMessages(prev => [...prev, newMessage]);
 
-  const addUserMessage = useCallback((content: string) => {
-    const message = messageManager.addMessage({
-      type: 'user',
-      content
-    });
-    state.addMessage(message);
-    return message;
-  }, [state]);
+    // If the message has audio, play it automatically.
+    if (message.audio && message.sender === 'ai') {
+        audioPlayer.playAudio(message.audio);
+    }
 
-  const addAssistantMessage = useCallback((content: string, audioUrl?: string) => {
-    const message = messageManager.addMessage({
-      type: 'assistant',
-      content,
-      audioUrl
-    });
-    state.addMessage(message);
-    return message;
-  }, [state]);
+    return newMessage;
+  }, [messages, setMessages, audioPlayer]);
 
-  const stopRecordingAndSend = useCallback(async () => {
+
+  const sendAudio = useCallback(async (audioBlob: Blob) => {
+    if (!webhookUrl) {
+      console.error("No webhook URL provided to sendAudio.");
+      toast({ title: "Configuration Error", description: "Webhook URL is not set.", variant: "destructive" });
+      return;
+    }
+
+    const webhookService = new WebhookService();
+    
+    addMessage({ sender: 'user', text: `[${t.sendingAudio}]` });
+
     try {
-      // Stop any playing audio before processing new request
-      audioPlayer.stopAudio();
+      const response = await webhookService.sendAudioToWebhook(audioBlob, webhookUrl, language);
       
-      state.setVoiceState(prev => ({ ...prev, status: 'sending', isRecording: false }));
-      state.setIsWaitingForClick(false);
-      addSystemMessage(t.stopRecording);
-      
-      const audioBlob = await microphone.stopRecording();
-      
-      if (audioBlob.size === 0) {
-        throw new Error(t.recordingFailed);
-      }
-      
-      console.log('Audio recorded successfully, size:', audioBlob.size);
-      
-      addUserMessage(t.processingAudio);
+      let text = t.defaultResponse;
+      let audio = '';
 
-      state.setVoiceState(prev => ({ ...prev, status: 'waiting' }));
-      addSystemMessage(t.sendingToServer);
-
-      // Get response data from webhook service (might be a fallback response if webhook returns 404)
-      const responseData = await webhookService.sendAudioToWebhook(audioBlob, config.webhookUrl);
-      console.log('Received response data:', responseData);
-
-      state.setVoiceState(prev => ({ ...prev, status: 'playing', isPlaying: true }));
-      addSystemMessage(t.processingResponse);
-
-      // Check if response contains both text and audio
       try {
-        const parsedResponse = JSON.parse(responseData);
-        if (parsedResponse.text && parsedResponse.audioUrl) {
-          // We have both text and audio
-          addAssistantMessage(parsedResponse.text, parsedResponse.audioUrl);
-          addSystemMessage(t.playingAudio);
-          await audioPlayer.playAudio(parsedResponse.audioUrl);
-        } else {
-          // Only text response
-          addAssistantMessage(parsedResponse.text || responseData);
+        const parsed = JSON.parse(response);
+        text = parsed.textResponse || parsed.text || t.defaultResponse;
+        
+        const audioKey = ['audioResponse', 'audio', 'data'].find(k => parsed[k]);
+        if (audioKey && parsed[audioKey]) {
+          let rawAudio = parsed[audioKey];
+          if (rawAudio.startsWith('//')) rawAudio = rawAudio.substring(2);
+          audio = `data:audio/mp3;base64,${rawAudio}`;
         }
       } catch (e) {
-        // Not JSON, treat as plain text or audio URL
-        if (responseData.startsWith('blob:')) {
-          addAssistantMessage('Äänivastaus', responseData);
-          addSystemMessage(t.playingAudio);
-          await audioPlayer.playAudio(responseData);
-        } else {
-          addAssistantMessage(responseData);
-        }
+        text = response || t.defaultResponse;
       }
-
-      state.setVoiceState({
-        status: 'idle',
-        isRecording: false,
-        isPlaying: false,
-        error: null
-      });
-      addSystemMessage(t.readyForNext);
+      
+      addMessage({ sender: 'ai', text, audio });
 
     } catch (error) {
-      console.error('Voice interaction error:', error);
-      
-      microphone.cleanup();
-      
-      state.setVoiceState({
-        status: 'idle',
-        isRecording: false,
-        isPlaying: false,
-        error: error instanceof Error ? error.message : t.unknownError
-      });
-
-      toast({
-        title: t.voiceError,
-        description: error instanceof Error ? error.message : t.tryAgain,
-        variant: "destructive"
-      });
-
-      addSystemMessage(`${t.voiceError}: ${error instanceof Error ? error.message : t.unknownError}`);
+      const errorMessage = error instanceof Error ? error.message : t.unknownError;
+      console.error("Error sending audio to webhook:", errorMessage);
+      addMessage({ sender: 'ai', text: `${t.errorResponse}: ${errorMessage}` });
+      toast({ title: t.voiceError, description: errorMessage, variant: 'destructive'});
     }
-  }, [microphone, audioPlayer, config.webhookUrl, state, addSystemMessage, addUserMessage, addAssistantMessage, t]);
+  }, [webhookUrl, language, addMessage, t]);
 
-  const handleVoiceInteraction = useCallback(async () => {
-    try {
-      // Stop any playing audio before starting new interaction
-      audioPlayer.stopAudio();
-      
-      // If waiting for click to stop recording
-      if (state.isWaitingForClick) {
-        await stopRecordingAndSend();
-        return;
-      }
-
-      // First interaction: try to play greeting
-      if (state.isFirstInteraction) {
-        state.setVoiceState(prev => ({ ...prev, status: 'greeting' }));
-        addSystemMessage(t.startConversationPrompt);
-        
-        try {
-          await audioPlayer.playGreeting();
-          addSystemMessage(t.greetingPlayed);
-        } catch (error) {
-          console.warn('Greeting audio failed, continuing without it:', error);
-          addSystemMessage(t.readyToListen);
-        }
-        
-        state.setIsFirstInteraction(false);
-      }
-
-      // Start recording
-      state.setVoiceState(prev => ({ ...prev, status: 'recording', isRecording: true }));
-      state.setIsWaitingForClick(true);
-      addSystemMessage(t.startRecording);
-      
-      await microphone.startRecording();
-      addSystemMessage(t.listeningClickWhenReady);
-
-      // No automatic timeout - user controls when to send
-
-    } catch (error) {
-      console.error('Voice interaction error:', error);
-      
-      microphone.cleanup();
-      
-      state.setVoiceState({
-        status: 'idle',
-        isRecording: false,
-        isPlaying: false,
-        error: error instanceof Error ? error.message : t.unknownError
-      });
-      state.setIsWaitingForClick(false);
-
-      toast({
-        title: t.voiceError,
-        description: error instanceof Error ? error.message : t.tryAgain,
-        variant: "destructive"
-      });
-
-      addSystemMessage(`${t.voiceError}: ${error instanceof Error ? error.message : t.unknownError}`);
-    }
-  }, [state, microphone, audioPlayer, stopRecordingAndSend, addSystemMessage, t]);
-
-  const reset = useCallback(() => {
-    microphone.cleanup();
-    audioPlayer.stopAudio();
-    webhookService.cleanup();
-    state.reset();
-    messageManager.reset();
-  }, [microphone, audioPlayer, state]);
 
   return {
-    voiceState: state.voiceState,
-    messages: state.messages,
-    handleVoiceInteraction,
-    reset,
-    isDisabled: state.voiceState.status !== 'idle' && !state.isWaitingForClick,
-    isWaitingForClick: state.isWaitingForClick
+    messages,
+    addMessage,
+    sendAudio,
+    t,
   };
 };

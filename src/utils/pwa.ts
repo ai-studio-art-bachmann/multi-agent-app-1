@@ -1,4 +1,3 @@
-
 // Store update preferences in local storage
 const UPDATE_PREFERENCES_KEY = 'app_update_preferences';
 const LAST_UPDATE_CHECK_KEY = 'app_last_update_check';
@@ -57,16 +56,19 @@ export const registerServiceWorker = async () => {
       // Unregister any existing service workers first to ensure clean state
       const registrations = await navigator.serviceWorker.getRegistrations();
       for (const registration of registrations) {
-        await registration.unregister();
-        console.log('Unregistered old service worker');
+        // We only unregister if the script URL is different from the current one,
+        // to avoid unregistering the service worker we're about to use.
+        if (registration.active && !registration.active.scriptURL.includes('?v=')) {
+          await registration.unregister();
+          console.log('Unregistered an old service worker without versioning.');
+        }
       }
       
       // Register the new service worker
-      const registration = await navigator.serviceWorker.register(swUrl);
+      const registration = await navigator.serviceWorker.register(swUrl, {
+        scope: '/',
+      });
       console.log('Service Worker registered successfully:', registration);
-      
-      // Get stored preferences
-      const preferences = getUpdatePreferences();
       
       // Listen for messages from the service worker
       navigator.serviceWorker.addEventListener('message', (event) => {
@@ -76,7 +78,7 @@ export const registerServiceWorker = async () => {
       });
       
       // Set up update handling
-      setupUpdateHandling(registration, preferences);
+      setupUpdateHandling(registration);
       
       return registration;
     } catch (error) {
@@ -86,7 +88,7 @@ export const registerServiceWorker = async () => {
 };
 
 // Handle service worker updates
-const setupUpdateHandling = (registration, preferences) => {
+const setupUpdateHandling = (registration) => {
   // Handle updates for new service workers that appear after page load
   registration.addEventListener('updatefound', () => {
     const newWorker = registration.installing;
@@ -97,7 +99,8 @@ const setupUpdateHandling = (registration, preferences) => {
         console.log('Service worker state changed:', newWorker.state);
         
         if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-          handleNewServiceWorker(newWorker, preferences);
+          // A new version is available, show an update notification.
+          showUpdateNotification(newWorker);
         }
       });
     }
@@ -106,85 +109,54 @@ const setupUpdateHandling = (registration, preferences) => {
   // Handle the case where a service worker is already waiting when the page loads
   if (registration.waiting && navigator.serviceWorker.controller) {
     console.log('Service worker already waiting on page load');
-    handleNewServiceWorker(registration.waiting, preferences);
+    showUpdateNotification(registration.waiting);
   }
 };
 
-// Handle a new service worker that's ready to take over
-const handleNewServiceWorker = (worker: ServiceWorker, preferences: { autoUpdate: boolean, lastDecision: string | null }) => {
-  // If user has opted for auto-updates, apply the update silently
-  if (preferences.autoUpdate) {
-    console.log('Auto-updating based on user preferences');
-    applyUpdate(worker);
+// Simplified update notification
+const showUpdateNotification = (worker: ServiceWorker) => {
+  console.log('A new version of the app is available. Please update.');
+  
+  const notificationId = 'update-notification-container';
+  if (document.getElementById(notificationId)) {
+    // Notification is already visible
     return;
   }
-  
-  // Check if we should show the notification based on last check time
-  if (!shouldShowUpdateNotification()) {
-    console.log('Skipping update notification based on previous decision');
-    return;
-  }
-  
-  // Show update notification
-  console.log('New version available!');
-  
-  // Create custom update notification instead of using window.confirm
-  const updateContainer = document.createElement('div');
-  updateContainer.id = 'update-notification';
-  updateContainer.style.position = 'fixed';
-  updateContainer.style.top = '20px';
-  updateContainer.style.left = '50%';
-  updateContainer.style.transform = 'translateX(-50%)';
-  updateContainer.style.backgroundColor = 'white';
-  updateContainer.style.padding = '16px';
-  updateContainer.style.borderRadius = '8px';
-  updateContainer.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
-  updateContainer.style.zIndex = '9999';
-  updateContainer.style.maxWidth = '90%';
-  updateContainer.style.width = '320px';
-  updateContainer.style.textAlign = 'center';
-  
-  updateContainer.innerHTML = `
-    <p style="margin: 0 0 16px 0; font-weight: bold;">Uusi versio saatavilla. Päivitä nyt?</p>
-    <div style="display: flex; justify-content: space-between;">
-      <button id="update-later" style="padding: 8px 16px; border: 1px solid #ccc; background: #f5f5f5; border-radius: 4px; cursor: pointer;">Myöhemmin</button>
-      <button id="update-now" style="padding: 8px 16px; background: #4285f4; color: white; border: none; border-radius: 4px; cursor: pointer;">Päivitä nyt</button>
-    </div>
-    <label style="display: block; margin-top: 12px; font-size: 14px;">
-      <input type="checkbox" id="auto-update-checkbox" ${preferences.autoUpdate ? 'checked' : ''}>
-      Päivitä automaattisesti jatkossa
-    </label>
-  `;
-  
-  document.body.appendChild(updateContainer);
-  
-  // Update now button
-  document.getElementById('update-now')?.addEventListener('click', () => {
-    // Save preference
-    const checkbox = document.getElementById('auto-update-checkbox') as HTMLInputElement;
-    const autoUpdate = checkbox ? checkbox.checked : false;
-    saveUpdatePreferences({ autoUpdate, lastDecision: 'accepted' });
-    
-    // Remove notification
-    document.body.removeChild(updateContainer);
-    
-    // Apply update
+
+  const container = document.createElement('div');
+  container.id = notificationId;
+  container.style.position = 'fixed';
+  container.style.bottom = '20px';
+  container.style.left = '50%';
+  container.style.transform = 'translateX(-50%)';
+  container.style.padding = '1rem';
+  container.style.backgroundColor = '#2c3e50';
+  container.style.color = 'white';
+  container.style.borderRadius = '8px';
+  container.style.boxShadow = '0 5px 15px rgba(0,0,0,0.3)';
+  container.style.zIndex = '10000';
+  container.style.display = 'flex';
+  container.style.alignItems = 'center';
+  container.style.gap = '1rem';
+
+  container.innerHTML = `<p style="margin: 0; font-size: 0.9rem;">Uusi versio saatavilla!</p>`;
+
+  const updateButton = document.createElement('button');
+  updateButton.textContent = 'Päivitä Nyt';
+  updateButton.style.padding = '0.5rem 1rem';
+  updateButton.style.border = 'none';
+  updateButton.style.backgroundColor = '#3498db';
+  updateButton.style.color = 'white';
+  updateButton.style.borderRadius = '5px';
+  updateButton.style.cursor = 'pointer';
+
+  updateButton.onclick = () => {
     applyUpdate(worker);
-  });
-  
-  // Update later button
-  document.getElementById('update-later')?.addEventListener('click', () => {
-    // Save preference
-    const checkbox = document.getElementById('auto-update-checkbox') as HTMLInputElement;
-    const autoUpdate = checkbox ? checkbox.checked : false;
-    saveUpdatePreferences({ autoUpdate, lastDecision: 'declined' });
-    
-    // Update last check time
-    updateLastCheckTime();
-    
-    // Remove notification
-    document.body.removeChild(updateContainer);
-  });
+    container.remove();
+  };
+
+  container.appendChild(updateButton);
+  document.body.appendChild(container);
 };
 
 // Type declaration to ensure TypeScript recognizes window properties
@@ -196,51 +168,15 @@ declare global {
 
 // Apply the update by sending SKIP_WAITING to the service worker
 const applyUpdate = (worker: ServiceWorker) => {
-  console.log('Applying update...');
+  console.log('Applying update by sending SKIP_WAITING...');
   
-  // Set up reload listener before sending the message
-  let reloadingPage = false;
-  
-  // Function to reload the page
-  const reloadPage = () => {
-    if (typeof window !== 'undefined' && window.location) {
-      window.location.reload();
-    }
-  };
-  
-  // Function to clear caches and reload
-  const clearCachesAndReload = () => {
-    if (typeof window !== 'undefined' && 'caches' in window) {
-      window.caches.keys()
-        .then(cacheNames => {
-          return Promise.all(
-            cacheNames.map(cacheName => {
-              console.log('Deleting cache:', cacheName);
-              return window.caches.delete(cacheName);
-            })
-          );
-        })
-        .then(() => {
-          console.log('All caches cleared, reloading page');
-          reloadPage();
-        })
-        .catch(err => {
-          console.error('Error clearing caches:', err);
-          reloadPage();
-        });
-    } else {
-      reloadPage();
-    }
-  };
-  
+  // When the new service worker takes control, the page will reload.
   navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (reloadingPage) return;
-    reloadingPage = true;
-    console.log('New service worker activated, reloading page');
-    clearCachesAndReload();
+    console.log('Controller changed. Reloading page...');
+    window.location.reload();
   });
   
-  // Send the message to skip waiting
+  // Send the message to the new service worker to take over.
   worker.postMessage({ type: 'SKIP_WAITING' });
 };
 
