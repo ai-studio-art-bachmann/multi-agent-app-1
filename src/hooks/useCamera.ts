@@ -28,9 +28,9 @@ export const useCamera = (): CameraHookReturn => {
     setError(null);
 
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      const noMediaDevicesMsg = '[useCamera] Camera API (navigator.mediaDevices.getUserMedia) not available.';
-      console.error(noMediaDevicesMsg);
-      setError('Kamera-API ei ole käytettävissä selaimessasi. Varmista, että käytät modernia selainta ja HTTPS-yhteyttä.');
+      const msg = 'Kamera-API ei ole käytettävissä selaimessasi.';
+      console.error(`[useCamera] ${msg}`);
+      setError(msg);
       setIsOpening(false);
       return;
     }
@@ -39,87 +39,53 @@ export const useCamera = (): CameraHookReturn => {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: 'environment',
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
+          width: { ideal: 1920 },
+          height: { ideal: 1080 }
         }
       });
       
       streamRef.current = stream;
-      if (videoRef.current) {
-        const videoElement = videoRef.current;
+      const videoElement = videoRef.current;
+
+      if (videoElement) {
         videoElement.srcObject = stream;
-        console.log('[useCamera] Stream assigned to video element.');
         
         await new Promise<void>((resolve, reject) => {
-          if (!videoRef.current) {
-            console.error('[useCamera] videoRef became null before open promise setup');
-            return reject(new Error('Videoref muutus nulliksi ennen lupauksen alustusta'));
-          }
+          const timer = setTimeout(() => {
+            reject(new Error('Kameran käynnistys aikakatkaistiin (5s).'));
+          }, 5000);
 
-          const onLoadedMetadata = () => {
-            videoElement.removeEventListener('loadedmetadata', onLoadedMetadata);
+          const onPlaying = () => {
+            clearTimeout(timer);
+            videoElement.removeEventListener('playing', onPlaying);
             videoElement.removeEventListener('error', onVideoError);
-            
-            console.log(`[useCamera] onLoadedMetadata fired. Initial check: W: ${videoElement.videoWidth}, H: ${videoElement.videoHeight}, RS: ${videoElement.readyState}`);
-
-            const attemptPlayAndFinalCheck = async (isRetry: boolean) => {
-              const logPrefix = `[useCamera ${isRetry ? 'Retry' : 'Initial'}]`;
-              if (videoElement.videoWidth > 0 && videoElement.videoHeight > 0 && videoElement.readyState >= videoElement.HAVE_METADATA) {
-                console.log(`${logPrefix} Dimensions and readyState look good before play(). Attempting play...`);
-                try {
-                  await videoElement.play();
-                  console.log(`${logPrefix} video.play() attempted.`);
-                } catch (playError) {
-                  console.warn(`${logPrefix} video.play() rejected. Error: ${playError instanceof Error ? playError.message : String(playError)}`);
-                }
-
-                if (videoElement.videoWidth > 0 && videoElement.videoHeight > 0 && videoElement.readyState >= videoElement.HAVE_METADATA) {
-                  console.log(`${logPrefix} Final check PASSED. W: ${videoElement.videoWidth}, H: ${videoElement.videoHeight}, RS: ${videoElement.readyState}. Resolving open().`);
-                  resolve();
-                  return true;
-                } else {
-                  console.warn(`${logPrefix} Final check FAILED after play attempt. W: ${videoElement.videoWidth}, H: ${videoElement.videoHeight}, RS: ${videoElement.readyState}`);
-                  return false;
-                }
-              } else {
-                console.warn(`${logPrefix} Pre-play check FAILED. W: ${videoElement.videoWidth}, H: ${videoElement.videoHeight}, RS: ${videoElement.readyState}`);
-                return false;
-              }
-            };
-
-            attemptPlayAndFinalCheck(false).then(success => {
-              if (success) return;
-
-              console.log('[useCamera] Initial attempt to ready video failed, will retry once after 150ms...');
-              setTimeout(() => {
-                if (!videoRef.current) {
-                    console.error('[useCamera] videoRef became null before retry attempt');
-                    reject(new Error('Videoref muutus nulliksi ennen uusintayritystä'));
-                    return;
-                }
-                attemptPlayAndFinalCheck(true).then(retrySuccess => {
-                  if (retrySuccess) return;
-                  
-                  console.error('[useCamera] All attempts to ready video failed within open(). Rejecting open().');
-                  reject(new Error('Videon valmistelu epäonnistui useista yrityksistä huolimatta (open-funktiossa).'));
-                });
-              }, 150);
-            });
+            console.log('[useCamera] Video stream is now playing.');
+            resolve();
           };
 
           const onVideoError = (e: Event) => {
-            videoElement.removeEventListener('loadedmetadata', onLoadedMetadata);
+            clearTimeout(timer);
+            videoElement.removeEventListener('playing', onPlaying);
             videoElement.removeEventListener('error', onVideoError);
-            console.error('[useCamera] Video element error during loading:', e);
-            reject(new Error('Videolaadimise viga (video element error)'));
+            console.error('[useCamera] Video element error:', e);
+            reject(new Error('Videoelementin virhe.'));
           };
 
-          videoElement.addEventListener('loadedmetadata', onLoadedMetadata);
+          videoElement.addEventListener('playing', onPlaying);
           videoElement.addEventListener('error', onVideoError);
+
+          // Trigger play. This is necessary for some browsers.
+          videoElement.play().catch(error => {
+              // The play() promise can be rejected if the user hasn't interacted with the page yet.
+              // The 'playing' event should still fire if it succeeds, so we can often ignore this rejection.
+              console.warn(`[useCamera] video.play() was rejected, but this is often recoverable. Error: ${error.message}`);
+          });
         });
       }
+      
       setIsOpen(true);
       console.log('[useCamera] Camera opened successfully.');
+
     } catch (err) {
       let specificErrorMessage = 'Kameran avaus epäonnistui tuntemattomasta syystä.';
       if (err instanceof Error) {
@@ -162,107 +128,56 @@ export const useCamera = (): CameraHookReturn => {
   }, [isOpen, isOpening]);
 
   const capture = useCallback(async (): Promise<Blob | null> => {
-    console.log('[useCamera] Attempting to capture photo...');
-    if (!videoRef.current) {
-      console.error('[useCamera] Capture failed: videoRef is null.');
-      setError('Kamera video elementti puuttuu');
+    if (!videoRef.current || !streamRef.current?.active) {
+      setError('Kamera ei ole valmis tai yhteys on katkennut.');
+      console.error('[useCamera] Capture failed: Camera not ready or stream inactive.');
       return null;
     }
-    if (!isOpen || !streamRef.current || !streamRef.current.active) {
-      console.error('[useCamera] Capture failed: Camera is not open, stream is not active or null.', {isOpen, streamActive: streamRef.current?.active});
-      setError('Kamera ei ole avoinna tai stream ei ole aktiivinen.');
-      return null;
-    }
-    
+  
     const video = videoRef.current;
-    const stream = streamRef.current;
-
-    if (video.readyState < video.HAVE_METADATA || video.videoWidth === 0 || video.videoHeight === 0) {
-      console.warn('[useCamera] Capture: Video not immediately ready. Attempting to re-prime.');
-      console.log(`[useCamera] Capture/Re-prime: Initial state - RS: ${video.readyState}, Dim: ${video.videoWidth}x${video.videoHeight}, Stream Active: ${stream.active}`);
-      
-      if (stream.active) {
-        video.srcObject = stream;
-        try {
-          await video.play();
-          console.log('[useCamera] Capture/Re-prime: video.play() attempted.');
-        } catch (e) {
-          console.warn('[useCamera] Capture/Re-prime: video.play() failed during re-prime:', e);
-        }
-        await new Promise(r => setTimeout(r, 100)); 
-        console.log(`[useCamera] Capture/Re-prime: State after re-prime attempt - RS: ${video.readyState}, Dim: ${video.videoWidth}x${video.videoHeight}`);
-      } else {
-        console.warn('[useCamera] Capture/Re-prime: Stream is not active, cannot re-prime effectively.');
+  
+    // Add a retry mechanism to ensure video is ready.
+    const MAX_ATTEMPTS = 5;
+    const ATTEMPT_DELAY = 100; // ms
+    for (let i = 0; i < MAX_ATTEMPTS; i++) {
+      if (video.readyState >= video.HAVE_METADATA && video.videoWidth > 0 && video.videoHeight > 0) {
+        console.log(`[useCamera] Video is ready for capture on attempt ${i + 1}.`);
+        break; // Video is ready
       }
+      console.warn(`[useCamera] Video not ready on attempt ${i + 1}. Waiting ${ATTEMPT_DELAY}ms...`);
+      await new Promise(resolve => setTimeout(resolve, ATTEMPT_DELAY));
     }
-
-    const MAX_READY_ATTEMPTS = 5;
-    const READY_ATTEMPT_DELAY = 200; // 200ms delay per attempt
-
-    for (let i = 0; i < MAX_READY_ATTEMPTS; i++) {
-        if (video.readyState >= video.HAVE_METADATA && video.videoWidth > 0 && video.videoHeight > 0) {
-            console.log(`[useCamera] Video ready for capture on attempt ${i + 1}. State: ${video.readyState}, Dimensions: ${video.videoWidth}x${video.videoHeight}`);
-            break; // Ready
-        }
-        console.warn(`[useCamera] Attempt ${i + 1}/${MAX_READY_ATTEMPTS}: Video not fully ready (readyState: ${video.readyState}, dimensions: ${video.videoWidth}x${video.videoHeight}). Waiting ${READY_ATTEMPT_DELAY}ms...`);
-        await new Promise(resolve => setTimeout(resolve, READY_ATTEMPT_DELAY));
+  
+    if (video.readyState < video.HAVE_METADATA || video.videoWidth === 0) {
+      setError('Videokuvaa ei voitu käsitellä. Yritä uudelleen.');
+      console.error(`[useCamera] Capture failed after all attempts: Video not ready (readyState: ${video.readyState}, width: ${video.videoWidth})`);
+      return null;
     }
-
-    if (video.readyState < video.HAVE_METADATA) {
-        console.error(`[useCamera] Capture failed: Video metadata not loaded after ${MAX_READY_ATTEMPTS} attempts. Final state: ${video.readyState}`);
-        setError('Videon metadata ei latautunut useista yrityksistä huolimatta.');
-        return null;
-    }
-    if (video.videoWidth === 0 || video.videoHeight === 0) {
-        console.error(`[useCamera] Capture failed: Video dimensions are zero after ${MAX_READY_ATTEMPTS} attempts. Final dimensions: ${video.videoWidth}x${video.videoHeight}`);
-        setError('Videon mitat pysyivät nollana useista yrityksistä huolimatta.');
-        return null;
-    }
-
-    console.log(`[useCamera] Proceeding with capture. Final state: ${video.readyState}, Dimensions: ${video.videoWidth}x${video.videoHeight}`);
-
+  
     try {
       const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      
       const context = canvas.getContext('2d');
-      
       if (!context) {
-        console.error('[useCamera] Capture failed: Canvas 2D context not available.');
-        setError('Canvas-konteksti ei ole käytettävissä');
-        return null;
+        throw new Error('Canvas 2D context not available.');
       }
-
-      const maxWidth = 1280;
-      let width = video.videoWidth;
-      let height = video.videoHeight;
       
-      if (width > maxWidth) {
-        const ratio = maxWidth / width;
-        width = maxWidth;
-        height = height * ratio;
-        console.log(`[useCamera] Resizing image to ${width}x${height}`);
-      }
-
-      canvas.width = width;
-      canvas.height = height;
-      
-      console.log('[useCamera] Drawing image to canvas...');
-      context.drawImage(video, 0, 0, width, height);
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
       
       return new Promise<Blob | null>((resolve) => {
-        console.log('[useCamera] Converting canvas to Blob...');
         canvas.toBlob((blob) => {
           if (blob) {
-            console.log('[useCamera] Blob created successfully, size:', blob.size);
             resolve(blob);
           } else {
-            console.error('[useCamera] Failed to create blob from canvas.');
-            setError('Canvasista ei saatu luotua kuvatiedostoa (blob).');
+            setError('Kuvan luominen epäonnistui (toBlob returnoi null).');
             resolve(null); 
           }
-        }, 'image/jpeg', 0.9);
+        }, 'image/jpeg', 0.92);
       });
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Kuvan ottaminen epäonnistui sisäinen virhe';
+      const errorMessage = err instanceof Error ? err.message : 'Kuvan ottamisessa tapahtui tuntematon virhe.';
       console.error('[useCamera] Error during capture process:', errorMessage, err);
       setError(errorMessage);
       return null;

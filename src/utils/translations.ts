@@ -47,6 +47,7 @@ export interface Translations {
   cameraTab: string;
   photoVoiceTab: string;
   voiceFlowTab: string;
+  voiceCameraTab: string;
 
   // Camera component
   startCamera: string;
@@ -183,6 +184,7 @@ export const translations: Record<'fi' | 'et' | 'en', Translations> = {
     cameraTab: 'Kamera',
     photoVoiceTab: 'Kuva+Ääni',
     voiceFlowTab: 'ÄäniVirta',
+    voiceCameraTab: 'ÄäniKamera',
     
     // Camera component
     startCamera: 'Käynnistä kamera',
@@ -317,6 +319,7 @@ export const translations: Record<'fi' | 'et' | 'en', Translations> = {
     cameraTab: 'Kaamera',
     photoVoiceTab: 'Pilt+Hääl',
     voiceFlowTab: 'Häälevoog',
+    voiceCameraTab: 'HääleKaamera',
     
     // Camera component
     startCamera: 'Käivita kaamera',
@@ -450,6 +453,7 @@ export const translations: Record<'fi' | 'et' | 'en', Translations> = {
     filesTab: 'Files',
     cameraTab: 'Camera',
     photoVoiceTab: 'Photo+Voice',
+    voiceCameraTab: 'VoiceCamera',
     
     // Camera component
     startCamera: 'Start camera',
