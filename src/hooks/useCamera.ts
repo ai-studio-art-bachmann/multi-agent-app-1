@@ -97,43 +97,27 @@ export const useCamera = (): CameraHookReturn => {
       console.log('[useCamera] Camera opened successfully.');
 
     } catch (err) {
-      let specificErrorMessage = 'Kameran avaus epäonnistui tuntemattomasta syystä.';
-      if (err instanceof Error) {
-        console.error(`[useCamera] Error opening camera: ${err.name} - ${err.message}`, err);
-        switch (err.name) {
-          case 'NotAllowedError':
-          case 'PermissionDeniedError': // Some browsers use this
-            specificErrorMessage = 'Kameran käyttölupa evätty. Tarkista selaimesi asetukset.';
-            break;
-          case 'NotFoundError':
-          case 'DevicesNotFoundError': // Some browsers use this
-            specificErrorMessage = 'Kameraa ei löytynyt. Varmista, että kamera on yhdistetty ja toimii.';
-            break;
-          case 'NotReadableError':
-          case 'TrackStartError': // Some browsers use this for hardware issues
-            specificErrorMessage = 'Kameran lukuvirhe. Kamera saattaa olla toisen sovelluksen käytössä tai siinä on tekninen vika.';
-            break;
-          case 'OverconstrainedError':
-          case 'ConstraintNotSatisfiedError': // Some browsers use this
-            specificErrorMessage = 'Kamera ei tue pyydettyjä asetuksia (esim. resoluutio).';
-            break;
-          case 'SecurityError':
-            specificErrorMessage = 'Kameran käyttö estetty turvallisuussyistä (esim. ei HTTPS-yhteyttä tai iframe-rajoitukset).';
-            break;
-          case 'TypeError': // Can happen if constraints are malformed
-             specificErrorMessage = 'Virheelliset kamera-asetukset.';
-             break;
-          default:
-            specificErrorMessage = `Kameran avaus epäonnistui: ${err.message}`;
+      console.error('[useCamera] Full error opening camera:', err);
+
+      let userMessage = 'Kameran käynnistys epäonnistui.';
+      
+      if (err instanceof DOMException) {
+        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+          userMessage = 'Kameran käyttöoikeus evättiin. Salli kameran käyttö selaimen osoiteriviltä ja päivitä sivu.';
+        } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+          userMessage = 'Yhtään kameraa ei löytynyt. Varmista, että laitteessasi on toimiva kamera.';
+        } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+          userMessage = 'Kameraa ei voitu lukea. Se voi olla toisen sovelluksen käytössä tai käyttöjärjestelmän tasolla estetty.';
+        } else {
+            userMessage = `Kameravirhe: ${err.message} (Tyyppi: ${err.name})`;
         }
-      } else {
-        console.error('[useCamera] Error opening camera (unknown error type):', err);
+      } else if (err instanceof Error) {
+        userMessage = `Yleinen kameravirhe: ${err.message}`;
       }
-      setError(specificErrorMessage);
-      // Ensure internal state is consistent on failure
-      setIsOpen(false); 
-    } finally {
+
+      setError(userMessage);
       setIsOpening(false);
+      throw new Error(userMessage);
     }
   }, [isOpen, isOpening]);
 
