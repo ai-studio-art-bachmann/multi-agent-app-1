@@ -13,7 +13,7 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <AppProvider>
+        <AppProvider defaultLanguage="et">
           <Router>
             <Routes>
               <Route path="/" element={<Index />} />
