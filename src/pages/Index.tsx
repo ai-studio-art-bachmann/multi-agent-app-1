@@ -9,7 +9,7 @@ import { getTranslations } from '@/utils/translations';
 const Index = () => {
   const [config, setConfig] = useState<ConversationConfig>({
     language: 'fi',
-    webhookUrl: 'https://n8n.artbachmann.eu/webhook/voice-assistant'
+    webhookUrl: '/webhook/voice-assistant'
   });
 
   const conversation = useConversation(config);

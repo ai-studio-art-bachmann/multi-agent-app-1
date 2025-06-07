@@ -236,7 +236,7 @@ async function handleInspectionSync() {
         formData.append('wantAudio', inspection.wantAudio.toString());
 
         // Use the default webhook URL - in real app this should come from config
-        const webhookUrl = 'https://n8n.artbachmann.eu/webhook/c995af71-fd09-431d-ab51-05476d66d0ba';
+        const webhookUrl = '/webhook/c995af71-fd09-431d-ab51-05476d66d0ba';
         
         const response = await fetch(webhookUrl, {
           method: 'POST',

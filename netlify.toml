@@ -1,4 +1,3 @@
-
 [build]
   publish = "dist"
   command = "npm run build"
@@ -11,6 +10,13 @@
   for = "/assets/*"
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
+
+# Proxy rule for n8n webhooks
+[[redirects]]
+  from = "/webhook/*"
+  to = "https://n8n.artbachmann.eu/webhook/:splat"
+  status = 200
+  force = true
 
 # Ensure all routes go to index.html for SPA routing
 [[redirects]]
