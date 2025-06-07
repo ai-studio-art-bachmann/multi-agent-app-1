@@ -120,7 +120,25 @@ export const VoiceAssistedCamera: React.FC = () => {
       setFlowState('asking_filename');
       setStatusMessage('Kuuntelen tiedostonimeä...');
       
-      const voiceFileName = await speech.ask('Anna kuvalle nimi', language);
+      let voiceFileName = '';
+      try {
+        voiceFileName = await Promise.race([
+          speech.ask('Anna kuvalle nimi', language),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Speech timeout')), 10000))
+        ]);
+        if (!voiceFileName || voiceFileName.trim().length === 0) throw new Error('Tunnistus epäonnistui');
+      } catch (err) {
+        console.error('[VoiceAssistedCamera] Speech recognition failed:', err);
+        // Show text input fallback
+        if (speech && typeof speech.showTextInput === 'function') {
+          speech.showTextInput('Kirjoita tiedostonimi käsin:');
+          // Wait for user to submit text input
+          voiceFileName = await speech.waitForTextInput();
+        } else {
+          // Absolute fallback: prompt
+          voiceFileName = window.prompt('Kirjoita tiedostonimi käsin:') || '';
+        }
+      }
       const processedFileName = processVoiceToFileName(voiceFileName);
       setFileName(processedFileName);
       fileNameForOffline = processedFileName;
@@ -152,11 +170,18 @@ export const VoiceAssistedCamera: React.FC = () => {
       }
 
       // Send to n8n webhook
+      const safeFileName = processedFileName.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const file = new File([photoBlob], safeFileName, { type: 'image/jpeg' });
       const formData = new FormData();
-      formData.append('file', photoBlob, processedFileName);
-      formData.append('fileName', processedFileName);
+      formData.append('file', file);
+      formData.append('fileName', safeFileName);
       formData.append('language', language);
       formData.append('wantAudio', wantsAudio.toString());
+
+      // Log all FormData keys and values
+      for (let pair of formData.entries()) {
+        console.log(`[VoiceAssistedCamera] FormData: ${pair[0]} =`, pair[1]);
+      }
 
       const response = await fetch(webhookUrl, {
         method: 'POST',
@@ -199,13 +224,20 @@ export const VoiceAssistedCamera: React.FC = () => {
         textResponse = await response.text();
       }
 
+      console.log('[VoiceAssistedCamera] audioBase64 length:', audioBase64 ? audioBase64.length : 0);
+      console.log('[VoiceAssistedCamera] audioBase64 start:', audioBase64 ? audioBase64.slice(0, 30) : 'null');
       let audioDataUri = '';
-      if (audioBase64 && audioBase64.length > 100) {
-        // Remove possible leading //
-        const cleanAudio = audioBase64.replace(/^\/\//, '');
-        audioDataUri = `data:audio/${audioFormat};base64,${cleanAudio}`;
-      }
+      const MAX_AUDIO_SIZE = 512000; // 500 KB limit for base64 string
 
+      if (audioBase64 && audioBase64.replace(/^\/+/, '').replace(/\s+/g, '').length > 0) {
+        const cleanAudio = audioBase64.replace(/^\/+/, '').replace(/\s+/g, '');
+        if (cleanAudio.length < MAX_AUDIO_SIZE) {
+          audioDataUri = `data:audio/${audioFormat};base64,${cleanAudio}`;
+          console.log('[VoiceAssistedCamera] audioDataUri:', audioDataUri.slice(0, 60));
+        } else {
+          console.warn(`[VoiceAssistedCamera] Audio data is too large: ${cleanAudio.length} bytes. Limit is ${MAX_AUDIO_SIZE}.`);
+        }
+      }
       if (audioDataUri) {
         setAnalysisMessages([
           {
@@ -216,9 +248,29 @@ export const VoiceAssistedCamera: React.FC = () => {
             audioUrl: audioDataUri,
           },
         ]);
-        // Play audio automatically (best practice: after user interaction)
         const audio = new Audio(audioDataUri);
-        audio.play().catch(() => {}); // Ignore autoplay errors
+        audio.onerror = (e) => {
+          console.error('[VoiceAssistedCamera] Audio playback error:', e);
+          setAnalysisMessages([
+            {
+              id: uuidv4(),
+              type: 'assistant',
+              content: textResponse + `\n\n⚠️ Äänitiedosto on vioittunut tai liian suuri. Kontrolli n8n workflow!`,
+              timestamp: new Date(),
+            },
+          ]);
+        };
+        audio.play().catch((err) => {
+          console.error('[VoiceAssistedCamera] Audio play() error:', err);
+          setAnalysisMessages([
+            {
+              id: uuidv4(),
+              type: 'assistant',
+              content: textResponse + `\n\n⚠️ Äänitiedosto on vioittunut tai liian suuri. Kontrolli n8n workflow!`,
+              timestamp: new Date(),
+            },
+          ]);
+        });
       } else {
         setAnalysisMessages([
           {
@@ -328,6 +380,7 @@ export const VoiceAssistedCamera: React.FC = () => {
     setCapturedImage(null);
     setFileName('');
     setStatusMessage('');
+    setAnalysisMessages([]); // Clear previous analysis messages
     
     camera.close();
     
@@ -361,7 +414,7 @@ export const VoiceAssistedCamera: React.FC = () => {
   return (
     <div className="p-4 bg-white rounded-2xl shadow-lg border border-gray-200">
       {/* Header */}
-      <div className="mb-4 text-center">
+      <div className="mb-3 text-center">
         <h3 className="text-lg font-semibold text-gray-800 mb-2">
           Ääniohjattu kuvaustyökalu
         </h3>
@@ -392,11 +445,11 @@ export const VoiceAssistedCamera: React.FC = () => {
 
       {/* Captured image preview */}
       {capturedImage && (
-        <div className="mb-4">
+        <div className="mb-3">
           <img
             src={capturedImage}
             alt="Otettu kuva"
-            className="w-full aspect-[16/9] max-h-40 object-cover rounded-lg border mx-auto"
+            className="w-full aspect-[16/9] max-h-32 object-cover rounded-lg border mx-auto"
           />
           {fileName && (
             <p className="text-sm text-gray-600 mt-2 text-center font-medium">
@@ -408,7 +461,7 @@ export const VoiceAssistedCamera: React.FC = () => {
 
       {/* Status message */}
       {statusMessage && (
-        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+        <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
           <div className="flex items-center gap-2">
             {getFlowStepIcon()}
             <span className="text-sm text-blue-800 font-medium">{statusMessage}</span>
@@ -418,14 +471,14 @@ export const VoiceAssistedCamera: React.FC = () => {
 
       {/* Analysis messages */}
       {analysisMessages.length > 0 && (
-        <div className="mb-4 max-h-32 overflow-auto rounded-lg border border-gray-200 bg-gray-50 p-2">
+        <div className="mb-3 max-h-36 overflow-auto rounded-lg border border-gray-200 bg-gray-50 p-2">
           <DynamicResponsePanel messages={analysisMessages} language={language} />
         </div>
       )}
 
       {/* Text input fallback for speech recognition */}
       {speech.showTextInput && (
-        <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+        <div className="mb-3 p-4 bg-amber-50 border border-amber-200 rounded-lg">
           <p className="text-sm font-medium text-amber-800 mb-2">{speech.textInputPrompt}</p>
           <form onSubmit={(e) => {
             e.preventDefault();
@@ -485,7 +538,7 @@ export const VoiceAssistedCamera: React.FC = () => {
 
       {/* Error display */}
       {camera.error && (
-        <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+        <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
           <p className="text-sm text-red-800">
             <strong>Kameravirhe:</strong> {camera.error}
           </p>
@@ -494,7 +547,7 @@ export const VoiceAssistedCamera: React.FC = () => {
 
       {/* Workflow help text */}
       {flowState === 'idle' && (
-        <div className="mt-4 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+        <div className="mt-3 p-3 bg-gray-50 border border-gray-200 rounded-lg">
           <p className="text-xs text-gray-600 text-center leading-relaxed">
             <strong>Ääniohjattu työnkulku:</strong><br />
             1. Ota kuva → 2. Anna nimi äänellä → 3. Valitse analyysin kuuntelu → 4. Tallenna automaattisesti
