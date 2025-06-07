@@ -35,7 +35,7 @@ export const VoiceAssistedCamera: React.FC = () => {
   
   const context = useContext(AppContext);
   if (!context) throw new Error("VoiceAssistedCamera must be used within AppProvider");
-  const { language, webhookUrl } = context;
+  const { language, cameraWebhookUrl, setCameraWebhookUrl } = context;
 
   const camera = useCamera();
   const speech = useSpeech();
@@ -121,24 +121,26 @@ export const VoiceAssistedCamera: React.FC = () => {
       setStatusMessage('Kuuntelen tiedostonimeä...');
       
       let voiceFileName = '';
-      try {
-        voiceFileName = await Promise.race([
-          speech.ask('Anna kuvalle nimi', language),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('Speech timeout')), 10000))
-        ]);
-        if (!voiceFileName || voiceFileName.trim().length === 0) throw new Error('Tunnistus epäonnistui');
-      } catch (err) {
-        console.error('[VoiceAssistedCamera] Speech recognition failed:', err);
-        // Show text input fallback
-        if (speech && typeof speech.showTextInput === 'function') {
-          speech.showTextInput('Kirjoita tiedostonimi käsin:');
-          // Wait for user to submit text input
-          voiceFileName = await speech.waitForTextInput();
-        } else {
-          // Absolute fallback: prompt
-          voiceFileName = window.prompt('Kirjoita tiedostonimi käsin:') || '';
+      let attempts = 0;
+      while (voiceFileName.trim().length === 0 && attempts < 2) {
+        try {
+          const prompt = attempts === 0 ? 'Anna kuvalle nimi' : 'En kuullut selvästi. Sano nimi uudelleen.';
+          voiceFileName = await Promise.race([
+            speech.ask(prompt, language),
+            new Promise<string>((_, reject) => setTimeout(() => reject(new Error('Speech timeout')), 15000))
+          ]);
+        } catch (err) {
+          console.error(`[VoiceAssistedCamera] Speech recognition attempt ${attempts + 1} failed:`, err);
         }
+        attempts++;
       }
+
+      if (voiceFileName.trim().length === 0) {
+        // If still no name, assign a default one
+        voiceFileName = `kuva_${uuidv4()}`;
+        await speech.speak(`Nimeäminen epäonnistui. Tallennetaan oletusnimellä.`, language);
+      }
+
       const processedFileName = processVoiceToFileName(voiceFileName);
       setFileName(processedFileName);
       fileNameForOffline = processedFileName;
@@ -165,8 +167,8 @@ export const VoiceAssistedCamera: React.FC = () => {
         throw new Error('offline_mode');
       }
       
-      if (!webhookUrl) {
-        throw new Error('Webhook URL is not configured.');
+      if (!cameraWebhookUrl) {
+        throw new Error('Camera Webhook URL is not configured.');
       }
 
       // Send to n8n webhook
@@ -183,7 +185,7 @@ export const VoiceAssistedCamera: React.FC = () => {
         console.log(`[VoiceAssistedCamera] FormData: ${pair[0]} =`, pair[1]);
       }
 
-      const response = await fetch(webhookUrl, {
+      const response = await fetch(cameraWebhookUrl, {
         method: 'POST',
         body: formData,
       });
@@ -327,7 +329,7 @@ export const VoiceAssistedCamera: React.FC = () => {
       }
     }
   }, [
-    camera, speech, language, t, processVoiceToFileName, webhookUrl, 
+    camera, speech, language, t, processVoiceToFileName, cameraWebhookUrl, 
     addMessage, supabaseService
   ]);
 

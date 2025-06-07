@@ -18,6 +18,13 @@
   status = 200
   force = true
 
+# Proxy rule for Camera n8n webhooks
+[[redirects]]
+  from = "/webhook-camera/*"
+  to = "https://n8n.artbachmann.eu/webhook/:splat"
+  status = 200
+  force = true
+
 # Ensure all routes go to index.html for SPA routing
 [[redirects]]
   from = "/*"

@@ -17,7 +17,6 @@ export const InteractionPanel: React.FC = () => {
   if (!context) throw new Error("InteractionPanel must be used within an AppProvider");
   const { language, webhookUrl } = context;
 
-  // Käytä keskustelun flow'n tiloja ja funktioita
   const { voiceState, handleVoiceInteraction, isDisabled, isWaitingForClick, t } = useConversation();
 
   const handleTabChange = (tab: TabType) => {

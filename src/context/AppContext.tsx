@@ -11,6 +11,8 @@ interface AppContextType {
   setMessages: Dispatch<SetStateAction<Message[]>>;
   webhookUrl: string | null;
   setWebhookUrl: Dispatch<SetStateAction<string | null>>;
+  cameraWebhookUrl: string | null;
+  setCameraWebhookUrl: Dispatch<SetStateAction<string | null>>;
   // Keskustelun flow
   voiceState: VoiceState;
   setVoiceState: Dispatch<SetStateAction<VoiceState>>;
@@ -26,10 +28,11 @@ interface AppProviderProps {
 }
 
 export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
-  const [language, setLanguage] = useState<Language>('fi');
+  const [language, setLanguage] = useState<Language>('et');
   const [messages, setMessages] = useState<Message[]>([]);
   // Use the local proxy path. Vite will forward this to the target specified in vite.config.ts
   const [webhookUrl, setWebhookUrl] = useState<string | null>('/webhook/voice-assistant');
+  const [cameraWebhookUrl, setCameraWebhookUrl] = useState<string | null>('/webhook-camera/image-upload');
   // Keskustelun flow
   const [voiceState, setVoiceState] = useState<VoiceState>({
     status: 'idle',
@@ -51,6 +54,8 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     setMessages,
     webhookUrl,
     setWebhookUrl,
+    cameraWebhookUrl,
+    setCameraWebhookUrl,
     voiceState,
     setVoiceState,
     isWaitingForClick,
