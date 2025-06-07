@@ -17,33 +17,32 @@ export interface SupabaseResponse {
 
 // Mock implementation - replace with actual Supabase when ready
 export const supabaseService = {
-  async saveInspection(inspection: Omit<InspectionRecord, 'id' | 'createdAt'>): Promise<SupabaseResponse> {
+  async saveInspection(inspection: { fileUrl: string; text: string; audioUrl: string; fileName: string; language: 'fi' | 'et' | 'en'; }) {
     try {
+      // Map to my_images table structure
+      const now = new Date();
+      const uniqueFileName = `${inspection.fileName.replace(/\.[^/.]+$/, '')}_${now.getTime()}` + (inspection.fileName.match(/\.[^/.]+$/) ? inspection.fileName.match(/\.[^/.]+$/)[0] : '');
+      const dbRecord = {
+        file_name: uniqueFileName,
+        file_path: inspection.fileUrl,
+        room_id: null,
+        project_id: null,
+        timestamp: now.toISOString(),
+        construction_score: null,
+        quality_score: null,
+        ai_analysis: inspection.text,
+        issues: null,
+        recommendations: null,
+        public_url: inspection.fileUrl,
+        created_at: now.toISOString(),
+      };
       // Mock implementation - in real app, use Supabase client
-      console.log('Mock: Saving to Supabase inspections table:', inspection);
-      
-      // Simulate API delay
+      console.log('Mock: Saving to Supabase my_images table:', dbRecord);
       await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Mock successful response
-      const savedRecord: InspectionRecord = {
-        id: `inspection_${Date.now()}`,
-        ...inspection,
-        createdAt: new Date().toISOString()
-      };
-      
-      console.log('Mock: Saved inspection:', savedRecord);
-      
-      return {
-        success: true,
-        data: savedRecord
-      };
+      return { success: true, data: dbRecord };
     } catch (error) {
       console.error('Mock: Error saving inspection:', error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      };
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   },
 

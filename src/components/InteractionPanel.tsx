@@ -8,7 +8,6 @@ import { useToast } from '@/components/ui/use-toast';
 import { uploadFile } from '@/services/uploadService';
 import { AppContext } from '@/context/AppContext';
 import { useConversation } from '@/hooks/useConversation';
-import { useMicrophone } from '@/hooks/useMicrophone';
 
 export const InteractionPanel: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('audio');
@@ -16,45 +15,13 @@ export const InteractionPanel: React.FC = () => {
 
   const context = useContext(AppContext);
   if (!context) throw new Error("InteractionPanel must be used within an AppProvider");
-  const { language, webhookUrl, messages } = context;
+  const { language, webhookUrl } = context;
 
-  const { sendAudio, t } = useConversation();
-  const microphone = useMicrophone();
-  const [isRecording, setIsRecording] = useState(false);
-
+  // Käytä keskustelun flow'n tiloja ja funktioita
+  const { voiceState, handleVoiceInteraction, isDisabled, isWaitingForClick, t } = useConversation();
 
   const handleTabChange = (tab: TabType) => {
-    console.log(`Tab changed to: ${tab}`);
-    // Stop recording if switching tabs
-    if (isRecording) {
-      microphone.stopRecording();
-      setIsRecording(false);
-    }
     setActiveTab(tab);
-  };
-  
-  const handleVoiceInteraction = async () => {
-    if (!isRecording) {
-      try {
-        await microphone.startRecording();
-        setIsRecording(true);
-        toast({ title: t.listening, description: t.clickToStop });
-      } catch (error) {
-        toast({ title: t.voiceError, description: (error as Error).message, variant: 'destructive' });
-      }
-    } else {
-      try {
-        const audioBlob = await microphone.stopRecording();
-        setIsRecording(false);
-        if (audioBlob.size > 100) { // Simple validation for non-empty recording
-          sendAudio(audioBlob);
-        } else {
-          toast({ title: t.recordingFailed, description: t.tryAgain, variant: 'destructive' });
-        }
-      } catch (error) {
-        toast({ title: t.voiceError, description: (error as Error).message, variant: 'destructive' });
-      }
-    }
   };
 
   const handleFileUpload = async (file: File) => {
@@ -86,7 +53,6 @@ export const InteractionPanel: React.FC = () => {
     }
   };
 
-  // Log the current active tab for debugging
   useEffect(() => {
     console.log(`Active tab in InteractionPanel: ${activeTab}`);
   }, [activeTab]);
@@ -103,7 +69,7 @@ export const InteractionPanel: React.FC = () => {
           {activeTab === 'audio' && (
             <VoiceButton
               onClick={handleVoiceInteraction}
-              isRecording={isRecording}
+              isRecording={voiceState.isRecording}
               language={language}
             />
           )}

@@ -9,6 +9,7 @@ import { supabaseService } from '@/services/supabaseService';
 import { Camera, Mic, Volume2, Upload, Wifi, WifiOff, PlayCircle, RotateCcw } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { AppContext } from '@/context/AppContext';
+import { DynamicResponsePanel } from '@/components/DynamicResponsePanel';
 
 type FlowState = 
   | 'idle'
@@ -30,6 +31,7 @@ export const VoiceAssistedCamera: React.FC = () => {
   const [fileName, setFileName] = useState<string>('');
   const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
   const [statusMessage, setStatusMessage] = useState<string>('');
+  const [analysisMessages, setAnalysisMessages] = useState([]);
   
   const context = useContext(AppContext);
   if (!context) throw new Error("VoiceAssistedCamera must be used within AppProvider");
@@ -197,29 +199,35 @@ export const VoiceAssistedCamera: React.FC = () => {
         textResponse = await response.text();
       }
 
+      let audioDataUri = '';
       if (audioBase64 && audioBase64.length > 100) {
-        // Poista mahdollinen alun //
-        const cleanAudio = audioBase64.startsWith('//') ? audioBase64.slice(2) : audioBase64;
-        const audioDataUri = `data:audio/${audioFormat};base64,${cleanAudio}`;
-        // Toista ääni
-        await playAudioWithFallback(audioDataUri);
-        // Lisää analyysi keskusteluun
-        addMessage({
-          id: uuidv4(),
-          sender: 'ai',
-          text: textResponse,
-          audio: audioDataUri,
-          timestamp: new Date().toISOString(),
-        });
+        // Remove possible leading //
+        const cleanAudio = audioBase64.replace(/^\/\//, '');
+        audioDataUri = `data:audio/${audioFormat};base64,${cleanAudio}`;
+      }
+
+      if (audioDataUri) {
+        setAnalysisMessages([
+          {
+            id: uuidv4(),
+            type: 'assistant',
+            content: textResponse,
+            timestamp: new Date(),
+            audioUrl: audioDataUri,
+          },
+        ]);
+        // Play audio automatically (best practice: after user interaction)
+        const audio = new Audio(audioDataUri);
+        audio.play().catch(() => {}); // Ignore autoplay errors
       } else {
-        // Ei audioa, fallback: puhu teksti
-        await speech.speak(textResponse || 'Ei analyysiä', language);
-        addMessage({
-          id: uuidv4(),
-          sender: 'ai',
-          text: textResponse,
-          timestamp: new Date().toISOString(),
-        });
+        setAnalysisMessages([
+          {
+            id: uuidv4(),
+            type: 'assistant',
+            content: textResponse,
+            timestamp: new Date(),
+          },
+        ]);
       }
 
       // Step 6: Save to database
@@ -388,7 +396,7 @@ export const VoiceAssistedCamera: React.FC = () => {
           <img
             src={capturedImage}
             alt="Otettu kuva"
-            className="w-full aspect-[4/3] object-cover rounded-lg border"
+            className="w-full aspect-[16/9] max-h-40 object-cover rounded-lg border mx-auto"
           />
           {fileName && (
             <p className="text-sm text-gray-600 mt-2 text-center font-medium">
@@ -405,6 +413,13 @@ export const VoiceAssistedCamera: React.FC = () => {
             {getFlowStepIcon()}
             <span className="text-sm text-blue-800 font-medium">{statusMessage}</span>
           </div>
+        </div>
+      )}
+
+      {/* Analysis messages */}
+      {analysisMessages.length > 0 && (
+        <div className="mb-4 max-h-32 overflow-auto rounded-lg border border-gray-200 bg-gray-50 p-2">
+          <DynamicResponsePanel messages={analysisMessages} language={language} />
         </div>
       )}
 

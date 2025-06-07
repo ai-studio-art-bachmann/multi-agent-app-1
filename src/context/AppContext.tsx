@@ -1,5 +1,6 @@
 import React, { createContext, useState, ReactNode, Dispatch, SetStateAction } from 'react';
 import { Message } from '@/utils/messages';
+import { VoiceState } from '@/types/voice';
 
 export type Language = 'fi' | 'et' | 'en';
 
@@ -10,6 +11,12 @@ interface AppContextType {
   setMessages: Dispatch<SetStateAction<Message[]>>;
   webhookUrl: string | null;
   setWebhookUrl: Dispatch<SetStateAction<string | null>>;
+  // Keskustelun flow
+  voiceState: VoiceState;
+  setVoiceState: Dispatch<SetStateAction<VoiceState>>;
+  isWaitingForClick: boolean;
+  setIsWaitingForClick: Dispatch<SetStateAction<boolean>>;
+  reset: () => void;
 }
 
 export const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -23,6 +30,19 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   // Use the local proxy path. Vite will forward this to the target specified in vite.config.ts
   const [webhookUrl, setWebhookUrl] = useState<string | null>('/webhook/voice-assistant');
+  // Keskustelun flow
+  const [voiceState, setVoiceState] = useState<VoiceState>({
+    status: 'idle',
+    isRecording: false,
+    isPlaying: false,
+    error: null
+  });
+  const [isWaitingForClick, setIsWaitingForClick] = useState(false);
+  const reset = () => {
+    setVoiceState({ status: 'idle', isRecording: false, isPlaying: false, error: null });
+    setMessages([]);
+    setIsWaitingForClick(false);
+  };
 
   const value = {
     language,
@@ -30,7 +50,12 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     messages,
     setMessages,
     webhookUrl,
-    setWebhookUrl
+    setWebhookUrl,
+    voiceState,
+    setVoiceState,
+    isWaitingForClick,
+    setIsWaitingForClick,
+    reset
   };
 
   return (
